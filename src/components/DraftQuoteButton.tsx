@@ -1,8 +1,9 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Button, Modal } from "./ui";
-import { currency } from "../lib/api";
+import { api, currency, ApiError } from "../lib/api";
+import { useApiMutation } from "../lib/hooks";
 import { aiDraftQuote, type QuoteDraft } from "../lib/ai";
-import { ApiError } from "../lib/api";
 
 /**
  * F3 — Site-Adaptive Quote Drafting. Drafts a quote for a work order,
@@ -11,11 +12,42 @@ import { ApiError } from "../lib/api";
  * creates the quote through the normal flow.
  */
 export function DraftQuoteButton({ workOrderId }: { workOrderId: string }) {
+  const nav = useNavigate();
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [draft, setDraft] = useState<QuoteDraft | null>(null);
   const [comparables, setComparables] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
+
+  // Create a real DRAFT quote on this work order from the AI draft.
+  const createQuote = useApiMutation(
+    (body: Record<string, unknown>) => api.post<{ id: string }>("/quotes", body),
+    [`/work-orders/${workOrderId}`, "/quotes", "/dashboard"]
+  );
+
+  function create() {
+    if (!draft) return;
+    createQuote.mutate(
+      {
+        workOrderId,
+        labourHours: draft.labourHours,
+        labourRate: draft.labourRate,
+        materialCost: draft.materialCost,
+        subcontractorCost: draft.subcontractorCost,
+        equipmentCost: draft.equipmentCost,
+        travelCost: draft.travelCost,
+        disposalCost: draft.disposalCost,
+        marginPercent: draft.marginPercent,
+        notes: draft.reasoning ? `AI-drafted. ${draft.reasoning}` : "AI-drafted quote.",
+      },
+      {
+        onSuccess: (q) => {
+          setOpen(false);
+          nav(`/quotes/${q.id}`);
+        },
+      }
+    );
+  }
 
   async function run() {
     setOpen(true);
@@ -87,9 +119,25 @@ export function DraftQuoteButton({ workOrderId }: { workOrderId: string }) {
               </div>
             )}
             <p className="text-xs text-slate-400">
-              Proposal only — totals (subtotal / GST) are computed server-side
-              when you create the quote. Review before sending.
+              Totals (subtotal / GST) are computed server-side. Creating it
+              saves a <strong>DRAFT</strong> quote you can review and send.
             </p>
+            {createQuote.isError && (
+              <div className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">
+                Couldn't create quote: {(createQuote.error as Error).message}
+              </div>
+            )}
+            <div className="flex flex-wrap items-center gap-2 border-t border-slate-100 pt-3">
+              <Button onClick={create} disabled={createQuote.isPending}>
+                {createQuote.isPending ? "Creating…" : "Create quote"}
+              </Button>
+              <Button variant="secondary" onClick={run} disabled={loading}>
+                Regenerate
+              </Button>
+              <Button variant="ghost" onClick={() => setOpen(false)}>
+                Cancel
+              </Button>
+            </div>
           </div>
         )}
       </Modal>
