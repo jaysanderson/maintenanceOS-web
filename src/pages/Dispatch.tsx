@@ -3,6 +3,7 @@ import { useList, useApiMutation } from "../lib/hooks";
 import { api, dateTime } from "../lib/api";
 import { WorkOrder, Employee } from "../lib/types";
 import { PageState, Card, Badge } from "../components/ui";
+import { DispatchActions } from "../components/DispatchActions";
 
 const ACTIVE = ["SCHEDULED", "DISPATCHED", "IN_PROGRESS", "WAITING_ON_PARTS"];
 
@@ -32,6 +33,7 @@ export default function Dispatch() {
   return (
     <PageState loading={orders.isLoading} error={orders.error}>
       <div className="space-y-6">
+        <DispatchActions />
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
           <Card>
             <Header title="Unassigned Work Orders" count={unassigned.length} tone="warn" />

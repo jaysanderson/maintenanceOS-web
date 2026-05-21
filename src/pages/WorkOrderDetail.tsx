@@ -21,6 +21,7 @@ import {
   inputCls,
 } from "../components/ui";
 import { KnowledgeCopilot } from "../components/KnowledgeCopilot";
+import { DraftQuoteButton } from "../components/DraftQuoteButton";
 
 const STATUSES = [
   "NEW", "TRIAGE", "QUOTE_REQUIRED", "AWAITING_APPROVAL", "APPROVED",
@@ -100,6 +101,7 @@ export default function WorkOrderDetail() {
                     ⚠ SLA breached
                   </span>
                 )}
+                <DraftQuoteButton workOrderId={wo.data.id} />
               </div>
             </div>
           </Card>

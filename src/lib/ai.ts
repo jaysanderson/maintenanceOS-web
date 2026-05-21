@@ -71,3 +71,51 @@ export const aiPlaybook = (jobDescription: string, jobType?: JobType) =>
 /** Multi-source Retrieval Agent (KB + live ERP via MCP). */
 export const aiAgent = (question: string, args?: Record<string, unknown>) =>
   api.post<{ answer: string; warning?: string }>("/ai/agent", { question, args });
+
+// ── F4 Daily Ops Briefing ────────────────────────────────────────────────
+export interface BriefingResponse {
+  briefing: string;
+  data: Record<string, unknown>;
+}
+export const aiBriefing = () => api.get<BriefingResponse>("/ai/briefing");
+
+// ── F5 Dispatcher Next-Best-Action ───────────────────────────────────────
+export interface DispatchAction {
+  workOrder: string;
+  action: "ASSIGN" | "ESCALATE" | "RESCHEDULE";
+  recommendedTechnician: string | null;
+  reason: string;
+}
+export interface DispatchActionsResponse {
+  actions: DispatchAction[] | null;
+  raw?: string;
+  context: Record<string, unknown>;
+}
+export const aiDispatchActions = (territory?: string) =>
+  api.post<DispatchActionsResponse>("/ai/dispatch-actions", { territory });
+
+// ── F3 Site-Adaptive Quote Drafting ──────────────────────────────────────
+export interface QuoteDraft {
+  labourHours: number;
+  labourRate: number;
+  materialCost: number;
+  subcontractorCost: number;
+  equipmentCost: number;
+  travelCost: number;
+  disposalCost: number;
+  marginPercent: number;
+  reasoning?: string;
+}
+export interface DraftQuoteResponse {
+  draft: QuoteDraft | null;
+  comparables: {
+    workOrder: string;
+    labourHours: number;
+    materialCost: number;
+    total: number;
+    marginPercent: number;
+  }[];
+  raw?: string;
+}
+export const aiDraftQuote = (workOrderId: string) =>
+  api.post<DraftQuoteResponse>("/ai/draft-quote", { workOrderId });

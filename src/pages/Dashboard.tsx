@@ -3,6 +3,7 @@ import { useList } from "../lib/hooks";
 import { currency } from "../lib/api";
 import { DashboardSummary } from "../lib/types";
 import { KpiCard, PageState, Card, Badge } from "../components/ui";
+import { AiBriefing } from "../components/AiBriefing";
 
 export default function Dashboard() {
   const { data, isLoading, error } = useList<DashboardSummary>(
@@ -13,6 +14,7 @@ export default function Dashboard() {
     <PageState loading={isLoading} error={error}>
       {data && (
         <div className="space-y-6">
+          <AiBriefing />
           <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4">
             <KpiCard label="Open Work Orders" value={data.openWorkOrders} />
             <KpiCard
