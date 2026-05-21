@@ -39,3 +39,35 @@ export const aiAsk = (query: string, filters?: AiFilter[]) =>
 /** Raw retrieval hits (no generation). */
 export const aiFind = (query: string, filters?: AiFilter[], limit?: number) =>
   api.post<{ hits: AiFindHit[] }>("/ai/find", { query, filters, limit });
+
+export type JobType =
+  | "REPAIR"
+  | "MAINTENANCE"
+  | "INSPECTION"
+  | "EMERGENCY"
+  | "RECURRING_SERVICE";
+
+export interface Playbook {
+  title: string;
+  requiredSkills: string[];
+  typicalMaterials: string[];
+  estimatedHours: number;
+  steps: string[];
+  safetyControls: string[];
+}
+
+export interface PlaybookResponse {
+  jobDescription: string;
+  jobType: JobType | null;
+  playbook: Playbook | null;
+  raw?: string;
+  citations: AiCitation[];
+}
+
+/** F2 — generate a structured Job Playbook grounded in history + safety docs. */
+export const aiPlaybook = (jobDescription: string, jobType?: JobType) =>
+  api.post<PlaybookResponse>("/ai/playbook", { jobDescription, jobType });
+
+/** Multi-source Retrieval Agent (KB + live ERP via MCP). */
+export const aiAgent = (question: string, args?: Record<string, unknown>) =>
+  api.post<{ answer: string; warning?: string }>("/ai/agent", { question, args });
