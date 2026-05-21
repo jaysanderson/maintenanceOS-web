@@ -21,6 +21,7 @@ import Reports from "./pages/Reports";
 import Settings from "./pages/Settings";
 import Audit from "./pages/Audit";
 import Recurring from "./pages/Recurring";
+import Copilot from "./pages/Copilot";
 
 export default function App() {
   const { user, loading } = useAuth();
@@ -49,6 +50,7 @@ export default function App() {
       <Routes>
         <Route path="/login" element={<Navigate to="/" replace />} />
         <Route path="/" element={<Dashboard />} />
+        <Route path="/copilot" element={<Copilot />} />
         <Route path="/accounts" element={<Accounts />} />
         <Route path="/accounts/:id" element={<AccountDetail />} />
         <Route path="/sites" element={<Sites />} />

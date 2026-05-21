@@ -20,6 +20,7 @@ import {
   Field,
   inputCls,
 } from "../components/ui";
+import { KnowledgeCopilot } from "../components/KnowledgeCopilot";
 
 const STATUSES = [
   "NEW", "TRIAGE", "QUOTE_REQUIRED", "AWAITING_APPROVAL", "APPROVED",
@@ -128,6 +129,28 @@ export default function WorkOrderDetail() {
                           <Row label="Completion Notes" value={wo.data.completionNotes} />
                         )}
                       </Card>
+                    ),
+                  },
+                  {
+                    label: "Copilot",
+                    content: (
+                      <KnowledgeCopilot
+                        subtitle={
+                          wo.data.account
+                            ? `Grounded answers across ${wo.data.account.name}'s jobs, quotes, invoices and safety docs.`
+                            : "Grounded answers across the knowledge base."
+                        }
+                        scopeFilters={
+                          wo.data.account
+                            ? [{ labelset: "account", label: wo.data.account.name }]
+                            : undefined
+                        }
+                        suggestions={[
+                          "What similar jobs have we done here before?",
+                          "What safety procedures apply to this job?",
+                          "Is this account at margin risk on recent work?",
+                        ]}
+                      />
                     ),
                   },
                   {
