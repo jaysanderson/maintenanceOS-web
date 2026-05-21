@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { useNavigate, useLocation } from "react-router-dom";
 import { useList, useApiMutation } from "../lib/hooks";
 import { api, date } from "../lib/api";
 import { WorkOrder, Account, Site, Employee } from "../lib/types";
@@ -23,6 +23,7 @@ const JOB_TYPES = ["REPAIR", "MAINTENANCE", "INSPECTION", "EMERGENCY", "QUOTE_ON
 
 export default function WorkOrders() {
   const nav = useNavigate();
+  const location = useLocation();
   const [status, setStatus] = useState("");
   const [priority, setPriority] = useState("");
   const [unassigned, setUnassigned] = useState(false);
@@ -52,6 +53,18 @@ export default function WorkOrders() {
     (body: Record<string, unknown>) => api.post("/work-orders", body),
     ["/work-orders", "/dashboard"]
   );
+
+  // Prefill + open the create modal when arriving from a Job Playbook
+  // ("Create job from playbook"). Clears the router state so a refresh
+  // doesn't re-open it.
+  useEffect(() => {
+    const prefill = (location.state as { prefill?: Partial<typeof form> } | null)?.prefill;
+    if (!prefill) return;
+    setForm((f) => ({ ...f, ...prefill }));
+    setOpen(true);
+    nav(location.pathname, { replace: true, state: null });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const submit = () => {
     create.mutate(

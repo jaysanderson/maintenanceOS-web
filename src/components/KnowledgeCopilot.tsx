@@ -1,5 +1,6 @@
 import { useState, FormEvent } from "react";
 import { Card, Button, inputCls } from "./ui";
+import { Markdown } from "./Markdown";
 import { aiAsk, type AiFilter, type AiCitation } from "../lib/ai";
 import { ApiError } from "../lib/api";
 
@@ -114,8 +115,8 @@ export function KnowledgeCopilot({
 
       {answer && (
         <div className="space-y-3">
-          <div className="whitespace-pre-wrap rounded-lg bg-slate-50 p-4 text-sm leading-relaxed text-slate-800">
-            {answer}
+          <div className="rounded-lg bg-slate-50 p-4">
+            <Markdown text={answer} />
           </div>
           {citations.length > 0 && (
             <div>

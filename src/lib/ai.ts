@@ -68,6 +68,13 @@ export interface PlaybookResponse {
 export const aiPlaybook = (jobDescription: string, jobType?: JobType) =>
   api.post<PlaybookResponse>("/ai/playbook", { jobDescription, jobType });
 
+/** F2b — save a generated playbook as a reusable template (into the KB). */
+export const aiSavePlaybook = (jobDescription: string, playbook: Playbook) =>
+  api.post<{ saved: boolean; slug: string }>("/ai/playbook/save", {
+    jobDescription,
+    playbook,
+  });
+
 /** Multi-source Retrieval Agent (KB + live ERP via MCP). */
 export const aiAgent = (question: string, args?: Record<string, unknown>) =>
   api.post<{ answer: string; warning?: string }>("/ai/agent", { question, args });

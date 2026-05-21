@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Card, Button } from "./ui";
+import { Markdown } from "./Markdown";
 import { aiBriefing } from "../lib/ai";
 import { ApiError } from "../lib/api";
 
@@ -67,30 +68,4 @@ export function AiBriefing() {
       {briefing && <Markdown text={briefing} />}
     </Card>
   );
-}
-
-/** Minimal markdown: bullet lines + **bold**. Sufficient for the briefing. */
-function Markdown({ text }: { text: string }) {
-  const lines = text.split("\n").filter((l) => l.trim());
-  return (
-    <div className="space-y-1 text-sm leading-relaxed text-slate-800">
-      {lines.map((line, i) => {
-        const indent = /^\s+[-*]/.test(line);
-        const clean = line.replace(/^\s*[-*]\s?/, "");
-        return (
-          <div key={i} className={`flex gap-2 ${indent ? "pl-6" : ""}`}>
-            {/^\s*[-*]/.test(line) && <span className="text-brand-500">•</span>}
-            <span dangerouslySetInnerHTML={{ __html: bold(clean) }} />
-          </div>
-        );
-      })}
-    </div>
-  );
-}
-
-function bold(s: string): string {
-  return s
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>");
 }

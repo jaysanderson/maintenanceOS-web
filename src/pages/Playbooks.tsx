@@ -1,6 +1,7 @@
 import { useState, FormEvent } from "react";
+import { useNavigate } from "react-router-dom";
 import { Card, Button, inputCls } from "../components/ui";
-import { aiPlaybook, type JobType, type Playbook, type AiCitation } from "../lib/ai";
+import { aiPlaybook, aiSavePlaybook, type JobType, type Playbook, type AiCitation } from "../lib/ai";
 import { ApiError } from "../lib/api";
 
 const JOB_TYPES: JobType[] = [
@@ -24,6 +25,7 @@ const EXAMPLES = [
  * Progress Agentic RAG (server-side /api/ai/playbook).
  */
 export default function Playbooks() {
+  const nav = useNavigate();
   const [desc, setDesc] = useState("");
   const [jobType, setJobType] = useState<JobType | "">("");
   const [loading, setLoading] = useState(false);
@@ -31,6 +33,37 @@ export default function Playbooks() {
   const [raw, setRaw] = useState<string | null>(null);
   const [citations, setCitations] = useState<AiCitation[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [saveState, setSaveState] = useState<"idle" | "saving" | "saved">("idle");
+
+  async function save() {
+    if (!playbook || saveState === "saving") return;
+    setSaveState("saving");
+    try {
+      await aiSavePlaybook(desc.trim() || playbook.title, playbook);
+      setSaveState("saved");
+    } catch {
+      setSaveState("idle");
+    }
+  }
+
+  function createJob() {
+    if (!playbook) return;
+    const description = [
+      ...(playbook.steps ?? []).map((s, i) => `${i + 1}. ${s}`),
+      "",
+      ...(playbook.safetyControls?.length ? ["Safety:", ...playbook.safetyControls.map((s) => `- ${s}`)] : []),
+    ].join("\n");
+    nav("/work-orders", {
+      state: {
+        prefill: {
+          title: playbook.title,
+          jobType: jobType || "REPAIR",
+          description,
+          estimatedHours: playbook.estimatedHours,
+        },
+      },
+    });
+  }
 
   async function run(description: string) {
     if (!description.trim() || loading) return;
@@ -39,6 +72,7 @@ export default function Playbooks() {
     setPlaybook(null);
     setRaw(null);
     setCitations([]);
+    setSaveState("idle");
     try {
       const res = await aiPlaybook(
         description.trim(),
@@ -133,7 +167,25 @@ export default function Playbooks() {
         )}
       </Card>
 
-      {playbook && <PlaybookView playbook={playbook} citations={citations} />}
+      {playbook && (
+        <>
+          <PlaybookView playbook={playbook} citations={citations} />
+          <Card className="flex flex-wrap items-center gap-3 p-4">
+            <span className="text-sm text-slate-500">What next?</span>
+            <Button variant="secondary" onClick={save} disabled={saveState === "saving"}>
+              {saveState === "saving"
+                ? "Saving…"
+                : saveState === "saved"
+                  ? "✓ Saved as template"
+                  : "Save as template"}
+            </Button>
+            <Button onClick={createJob}>Create job from playbook →</Button>
+            <span className="ml-auto text-xs text-slate-400">
+              Template is saved to the knowledge base; the job opens a pre-filled work order.
+            </span>
+          </Card>
+        </>
+      )}
 
       {!playbook && raw && (
         <Card className="whitespace-pre-wrap p-5 text-sm text-slate-700">{raw}</Card>
