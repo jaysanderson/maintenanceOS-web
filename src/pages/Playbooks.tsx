@@ -16,7 +16,7 @@ const EXAMPLES = [
   "Replace a leaking kitchen mixer tap",
   "Two-storey gutter clean and downpipe clear",
   "Replace a faulty switchboard RCD",
-  "Quarterly HVAC filter service",
+  "Service a noisy roller door",
 ];
 
 /**
