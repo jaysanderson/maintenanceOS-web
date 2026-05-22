@@ -11,6 +11,7 @@ export default defineConfig({
       // and unaffected — it uses the platform-injected PORT.
       "/api": "http://localhost:4010",
       "/docs": "http://localhost:4010",
+      "/mcp": "http://localhost:4010",
     },
   },
 });

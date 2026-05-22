@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Card, Button, Field, inputCls } from "../components/ui";
-import { api } from "../lib/api";
+import { api, tokenStore } from "../lib/api";
 import { useAuth } from "../lib/auth";
 
 interface CompanyConfig {
@@ -208,6 +208,8 @@ export default function Settings() {
         )}
       </Card>
 
+      <McpCard />
+
       {canEdit && (
         <Card className="border-amber-200 p-6">
           <h3 className="font-semibold">Demo Environment</h3>
@@ -249,6 +251,99 @@ export default function Settings() {
 
       {canEdit && <BackupsCard />}
     </div>
+  );
+}
+
+/**
+ * Surfaces the MCP server endpoint so anyone can connect an AI agent
+ * (Claude, etc.) to drive MaintenanceOS over the Model Context Protocol.
+ * The hosted MCP transport is on the same origin as the app (/mcp) and
+ * carries the same bearer token as the REST API.
+ */
+function McpCard() {
+  const mcpUrl = `${window.location.origin}/mcp`;
+  const token = tokenStore.get() ?? "";
+  const claudeCmd = `claude mcp add maintenanceos --transport http ${mcpUrl} --header "Authorization: Bearer <token>"`;
+  const [copied, setCopied] = useState<string | null>(null);
+
+  const copy = (label: string, value: string) => {
+    navigator.clipboard?.writeText(value).then(
+      () => {
+        setCopied(label);
+        setTimeout(() => setCopied((c) => (c === label ? null : c)), 1500);
+      },
+      () => {}
+    );
+  };
+
+  return (
+    <Card className="p-6">
+      <div className="flex items-center gap-2">
+        <h3 className="font-semibold">Connect via MCP</h3>
+        <span className="rounded-full bg-brand-50 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-brand-600">
+          Model Context Protocol
+        </span>
+      </div>
+      <p className="mt-1 text-sm text-slate-500">
+        Drive MaintenanceOS from an AI agent (Claude Desktop, Claude Code,
+        n8n, or your own). The agent can read and act on your live ERP data —
+        with the same role permissions as your login. Add this endpoint as a
+        custom connector and authenticate with a bearer token.
+      </p>
+
+      <div className="mt-4 space-y-3">
+        <Field label="MCP server endpoint">
+          <div className="flex gap-2">
+            <input className={`${inputCls} font-mono text-xs`} readOnly value={mcpUrl} />
+            <Button variant="secondary" onClick={() => copy("url", mcpUrl)}>
+              {copied === "url" ? "Copied" : "Copy"}
+            </Button>
+          </div>
+        </Field>
+
+        <Field label="Access token (your current session's bearer token)">
+          <div className="flex gap-2">
+            <input
+              className={`${inputCls} font-mono text-xs`}
+              readOnly
+              value={token ? `${token.slice(0, 24)}…` : "—"}
+            />
+            <Button
+              variant="secondary"
+              disabled={!token}
+              onClick={() => copy("token", token)}
+            >
+              {copied === "token" ? "Copied" : "Copy token"}
+            </Button>
+          </div>
+        </Field>
+
+        <div>
+          <div className="mb-1 text-xs font-medium text-slate-600">
+            Add to Claude Code
+          </div>
+          <div className="flex gap-2">
+            <code className="block w-full overflow-x-auto rounded-lg bg-slate-900 px-3 py-2 font-mono text-xs text-slate-100">
+              {claudeCmd}
+            </code>
+            <Button variant="secondary" onClick={() => copy("cmd", claudeCmd.replace("<token>", token))}>
+              {copied === "cmd" ? "Copied" : "Copy"}
+            </Button>
+          </div>
+          <p className="mt-2 text-xs text-slate-500">
+            For Claude Desktop or claude.ai, add a custom connector with the
+            endpoint above and header{" "}
+            <code className="rounded bg-slate-100 px-1">Authorization: Bearer &lt;token&gt;</code>.
+            Tokens follow your login session — for a long-lived integration,
+            mint a dedicated service token. Full guide:{" "}
+            <a className="text-brand-600 hover:underline" href="/docs" target="_blank" rel="noreferrer">
+              API docs
+            </a>
+            .
+          </p>
+        </div>
+      </div>
+    </Card>
   );
 }
 
