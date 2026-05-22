@@ -18,6 +18,7 @@ export function DraftQuoteButton({ workOrderId }: { workOrderId: string }) {
   const [draft, setDraft] = useState<QuoteDraft | null>(null);
   const [comparables, setComparables] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [lowConfidence, setLowConfidence] = useState<string | null>(null);
 
   // Create a real DRAFT quote on this work order from the AI draft.
   const createQuote = useApiMutation(
@@ -55,8 +56,16 @@ export function DraftQuoteButton({ workOrderId }: { workOrderId: string }) {
     setLoading(true);
     setError(null);
     setDraft(null);
+    setLowConfidence(null);
     try {
       const res = await aiDraftQuote(workOrderId);
+      if (res.lowConfidence || !res.draft) {
+        setLowConfidence(
+          res.message ??
+            "Not enough comparable jobs to draft a confident quote — please quote manually."
+        );
+        return;
+      }
       setDraft(res.draft);
       setComparables((res.comparables ?? []).map((c) => c.workOrder));
     } catch (e) {
@@ -86,6 +95,12 @@ export function DraftQuoteButton({ workOrderId }: { workOrderId: string }) {
         )}
         {error && (
           <div className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{error}</div>
+        )}
+        {lowConfidence && !loading && (
+          <div className="flex items-start gap-2 rounded-lg bg-amber-50 px-3 py-4 text-sm text-amber-800">
+            <span aria-hidden>⚠</span>
+            <span>{lowConfidence}</span>
+          </div>
         )}
         {draft && (
           <div className="space-y-4 text-sm">

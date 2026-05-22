@@ -15,6 +15,8 @@ export interface AiCitation {
 export interface AiAskResponse {
   answer: string;
   citations: AiCitation[];
+  confidence?: number;
+  lowConfidence?: boolean;
 }
 
 export interface AiFindHit {
@@ -62,6 +64,8 @@ export interface PlaybookResponse {
   playbook: Playbook | null;
   raw?: string;
   citations: AiCitation[];
+  lowConfidence?: boolean;
+  message?: string;
 }
 
 /** F2 — generate a structured Job Playbook grounded in history + safety docs. */
@@ -123,6 +127,8 @@ export interface DraftQuoteResponse {
     marginPercent: number;
   }[];
   raw?: string;
+  lowConfidence?: boolean;
+  message?: string;
 }
 export const aiDraftQuote = (workOrderId: string) =>
   api.post<DraftQuoteResponse>("/ai/draft-quote", { workOrderId });

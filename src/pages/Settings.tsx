@@ -13,6 +13,7 @@ interface CompanyConfig {
   gstRate: number;
   marginRiskThreshold: number;
   defaultPaymentTerms: string;
+  aiConfidenceThreshold: number;
 }
 
 type Counts = Record<string, number>;
@@ -170,6 +171,28 @@ export default function Settings() {
                   }
                 />
               </Field>
+            </div>
+            <div className="border-t border-slate-100 pt-3">
+              <Field label="AI confidence threshold (0–1)">
+                <input
+                  type="number"
+                  step="0.05"
+                  min="0"
+                  max="1"
+                  className={`${inputCls} max-w-[140px]`}
+                  disabled={!canEdit}
+                  value={cfg.aiConfidenceThreshold}
+                  onChange={(e) =>
+                    set("aiConfidenceThreshold", Number(e.target.value))
+                  }
+                />
+              </Field>
+              <p className="mt-1 text-xs text-slate-500">
+                Minimum retrieval score for the AI to answer. Below this (or
+                when the knowledge base has no grounded answer) the Copilot,
+                Playbooks and Quote-draft return a "not confident" message
+                instead of guessing. Higher = stricter.
+              </p>
             </div>
             {canEdit && (
               <div className="flex items-center gap-3 pt-1">

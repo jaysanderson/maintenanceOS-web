@@ -33,6 +33,7 @@ export default function Playbooks() {
   const [raw, setRaw] = useState<string | null>(null);
   const [citations, setCitations] = useState<AiCitation[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [lowConfidence, setLowConfidence] = useState<string | null>(null);
   const [saveState, setSaveState] = useState<"idle" | "saving" | "saved">("idle");
 
   async function save() {
@@ -72,12 +73,20 @@ export default function Playbooks() {
     setPlaybook(null);
     setRaw(null);
     setCitations([]);
+    setLowConfidence(null);
     setSaveState("idle");
     try {
       const res = await aiPlaybook(
         description.trim(),
         jobType === "" ? undefined : jobType
       );
+      if (res.lowConfidence) {
+        setLowConfidence(
+          res.message ??
+            "Not enough relevant history to build a reliable playbook for this."
+        );
+        return;
+      }
       setPlaybook(res.playbook);
       setRaw(res.raw ?? null);
       setCitations(res.citations ?? []);
@@ -157,6 +166,13 @@ export default function Playbooks() {
 
         {error && (
           <div className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{error}</div>
+        )}
+
+        {lowConfidence && !loading && (
+          <div className="flex items-start gap-2 rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-800">
+            <span aria-hidden>⚠</span>
+            <span>{lowConfidence}</span>
+          </div>
         )}
 
         {loading && (
