@@ -73,6 +73,7 @@ const NAV = [
   { to: "/", label: "Dashboard", icon: "▣" },
   { to: "/copilot", label: "Knowledge Copilot", icon: "✶" },
   { to: "/playbooks", label: "Job Playbooks", icon: "✷" },
+  { to: "/ops-assistant", label: "Ops Assistant", icon: "⚡" },
   { to: "/work-orders", label: "Work Orders", icon: "✦" },
   { to: "/dispatch", label: "Dispatch Board", icon: "⇄" },
   { to: "/quotes", label: "Quotes", icon: "$" },

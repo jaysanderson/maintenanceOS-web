@@ -83,6 +83,16 @@ export const aiSavePlaybook = (jobDescription: string, playbook: Playbook) =>
 export const aiAgent = (question: string, args?: Record<string, unknown>) =>
   api.post<{ answer: string; warning?: string }>("/ai/agent", { question, args });
 
+// ── Ops Assistant ────────────────────────────────────────────────────────
+export interface OpsAssistantResponse {
+  answer: string;
+  lowConfidence: boolean;
+  snapshotKeys: string[];
+}
+/** Ask a natural-language question over the live operations state. */
+export const aiOpsAssistant = (question: string) =>
+  api.post<OpsAssistantResponse>("/ai/ops-assistant", { question });
+
 // ── F4 Daily Ops Briefing ────────────────────────────────────────────────
 export interface BriefingResponse {
   briefing: string;
