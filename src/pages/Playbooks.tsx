@@ -14,9 +14,9 @@ const JOB_TYPES: JobType[] = [
 
 const EXAMPLES = [
   "Replace a leaking kitchen mixer tap",
-  "Two-storey gutter clean and downpipe clear",
-  "Replace a faulty switchboard RCD",
+  "Clean gutters and downpipes on a single-storey roof",
   "Service a noisy roller door",
+  "Make-safe after storm damage",
 ];
 
 /**
