@@ -94,9 +94,49 @@ export const aiOpsAssistant = (question: string) =>
   api.post<OpsAssistantResponse>("/ai/ops-assistant", { question });
 
 // ── F4 Daily Ops Briefing ────────────────────────────────────────────────
+export interface BriefingSlaBreach {
+  id: string;
+  workOrder: string;
+  title: string;
+  account: string;
+  priority: "LOW" | "NORMAL" | "HIGH" | "URGENT";
+  slaDueAt: string;
+}
+export interface BriefingOverdueInvoice {
+  id: string;
+  invoice: string;
+  account: string;
+  total: number;
+  dueAt: string;
+}
+export interface BriefingMarginJob {
+  id: string;
+  workOrder: string;
+  title: string;
+  grossMarginPercent: number;
+  revenue: number;
+}
+export interface BriefingLowStockItem {
+  name: string;
+  available: number;
+  reorderPoint: number;
+}
+export interface BriefingData {
+  openWorkOrders: number;
+  unassignedJobs: number;
+  jobsDueToday: number;
+  slaBreaches: number;
+  slaBreachedJobs: BriefingSlaBreach[];
+  overdueInvoices: BriefingOverdueInvoice[];
+  revenueThisMonthAud: number;
+  lowStockItems: BriefingLowStockItem[];
+  worstMarginJobs: BriefingMarginJob[];
+}
 export interface BriefingResponse {
+  /** Short AI-generated executive headline (2-3 sentences). */
   briefing: string;
-  data: Record<string, unknown>;
+  /** Structured snapshot — drives the interactive dashboard sections. */
+  data: BriefingData;
 }
 export const aiBriefing = () => api.get<BriefingResponse>("/ai/briefing");
 
