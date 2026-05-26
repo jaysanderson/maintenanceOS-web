@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Card, Button, Field, inputCls } from "../components/ui";
-import { api, tokenStore } from "../lib/api";
+import { api } from "../lib/api";
 import { useAuth } from "../lib/auth";
 
 interface CompanyConfig {
@@ -255,15 +255,42 @@ export default function Settings() {
 }
 
 /**
- * Surfaces the MCP server endpoint so anyone can connect an AI agent
- * (Claude, etc.) to drive MaintenanceOS over the Model Context Protocol.
- * The hosted MCP transport is on the same origin as the app (/mcp) and
- * carries the same bearer token as the REST API.
+ * Connect via MCP — issue long-lived personal access tokens so an AI
+ * agent (Claude Desktop, Claude Code, n8n, …) can drive MaintenanceOS
+ * over the Model Context Protocol without the 12-hour session JWT
+ * expiring mid-conversation. The raw token is shown once at creation
+ * time and then never recoverable; revoking removes its access
+ * immediately.
  */
+
+interface AccessTokenRow {
+  id: string;
+  name: string;
+  prefix: string;
+  createdAt: string;
+  lastUsedAt: string | null;
+  expiresAt: string | null;
+  revokedAt: string | null;
+}
+
+interface CreatedToken {
+  id: string;
+  name: string;
+  prefix: string;
+  /** The raw token — only present in the create response. */
+  token: string;
+  expiresAt: string | null;
+  createdAt: string;
+}
+
 function McpCard() {
   const mcpUrl = `${window.location.origin}/mcp`;
-  const token = tokenStore.get() ?? "";
-  const claudeCmd = `claude mcp add maintenanceos --transport http ${mcpUrl} --header "Authorization: Bearer <token>"`;
+  const [tokens, setTokens] = useState<AccessTokenRow[]>([]);
+  const [loadErr, setLoadErr] = useState<string | null>(null);
+  const [newName, setNewName] = useState("");
+  const [creating, setCreating] = useState(false);
+  const [createErr, setCreateErr] = useState<string | null>(null);
+  const [justCreated, setJustCreated] = useState<CreatedToken | null>(null);
   const [copied, setCopied] = useState<string | null>(null);
 
   const copy = (label: string, value: string) => {
@@ -276,6 +303,48 @@ function McpCard() {
     );
   };
 
+  const load = () =>
+    api
+      .get<{ tokens: AccessTokenRow[] }>("/access-tokens")
+      .then((r) => setTokens(r.tokens))
+      .catch((e) => setLoadErr((e as Error).message));
+
+  useEffect(() => {
+    load();
+  }, []);
+
+  const createToken = async () => {
+    if (!newName.trim() || creating) return;
+    setCreating(true);
+    setCreateErr(null);
+    try {
+      const created = await api.post<CreatedToken>("/access-tokens", {
+        name: newName.trim(),
+      });
+      setJustCreated(created);
+      setNewName("");
+      await load();
+    } catch (e) {
+      setCreateErr((e as Error).message);
+    } finally {
+      setCreating(false);
+    }
+  };
+
+  const revoke = async (id: string, name: string) => {
+    if (!confirm(`Revoke "${name}"? Any agent using it will lose access immediately.`)) return;
+    try {
+      await api.del(`/access-tokens/${id}`);
+      await load();
+    } catch (e) {
+      alert("Could not revoke: " + (e as Error).message);
+    }
+  };
+
+  const claudeCmd = justCreated
+    ? `claude mcp add maintenanceos --transport http ${mcpUrl} --header "Authorization: Bearer ${justCreated.token}"`
+    : `claude mcp add maintenanceos --transport http ${mcpUrl} --header "Authorization: Bearer <your-token>"`;
+
   return (
     <Card className="p-6">
       <div className="flex items-center gap-2">
@@ -286,9 +355,8 @@ function McpCard() {
       </div>
       <p className="mt-1 text-sm text-slate-500">
         Drive MaintenanceOS from an AI agent (Claude Desktop, Claude Code,
-        n8n, or your own). The agent can read and act on your live ERP data —
-        with the same role permissions as your login. Add this endpoint as a
-        custom connector and authenticate with a bearer token.
+        n8n, or your own). The agent acts with your role's permissions.
+        Long-lived tokens — they don't expire with your browser session.
       </p>
 
       <div className="mt-4 space-y-3">
@@ -301,22 +369,142 @@ function McpCard() {
           </div>
         </Field>
 
-        <Field label="Access token (your current session's bearer token)">
+        <div className="rounded-lg border border-slate-200 p-3">
+          <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
+            Create a new token
+          </div>
           <div className="flex gap-2">
             <input
-              className={`${inputCls} font-mono text-xs`}
-              readOnly
-              value={token ? `${token.slice(0, 24)}…` : "—"}
+              className={inputCls}
+              placeholder='Token name, e.g. "Claude Desktop"'
+              value={newName}
+              onChange={(e) => setNewName(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && createToken()}
             />
-            <Button
-              variant="secondary"
-              disabled={!token}
-              onClick={() => copy("token", token)}
-            >
-              {copied === "token" ? "Copied" : "Copy token"}
+            <Button onClick={createToken} disabled={!newName.trim() || creating}>
+              {creating ? "Creating…" : "Create token"}
             </Button>
           </div>
-        </Field>
+          {createErr && (
+            <div className="mt-2 text-xs text-red-600">{createErr}</div>
+          )}
+        </div>
+
+        {justCreated && (
+          <div className="rounded-lg border-2 border-amber-300 bg-amber-50 p-3">
+            <div className="mb-1 flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-amber-800">
+              <span aria-hidden>⚠</span>
+              Copy this token now — you'll never see it again
+            </div>
+            <div className="mb-2 text-xs text-amber-900">
+              "{justCreated.name}" — store this somewhere safe.
+            </div>
+            <div className="flex gap-2">
+              <input
+                className={`${inputCls} bg-white font-mono text-xs`}
+                readOnly
+                value={justCreated.token}
+                onFocus={(e) => e.currentTarget.select()}
+              />
+              <Button
+                variant="primary"
+                onClick={() => copy("new-token", justCreated.token)}
+              >
+                {copied === "new-token" ? "Copied" : "Copy token"}
+              </Button>
+            </div>
+            <button
+              type="button"
+              className="mt-2 text-xs text-amber-700 hover:underline"
+              onClick={() => setJustCreated(null)}
+            >
+              I've saved it — hide
+            </button>
+          </div>
+        )}
+
+        <div>
+          <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
+            Your tokens
+          </div>
+          {loadErr && (
+            <div className="text-xs text-red-600">{loadErr}</div>
+          )}
+          {!loadErr && tokens.length === 0 && (
+            <div className="rounded-lg border border-dashed border-slate-200 px-3 py-4 text-center text-xs text-slate-500">
+              No tokens yet. Create one above to connect an MCP agent.
+            </div>
+          )}
+          {tokens.length > 0 && (
+            <div className="overflow-hidden rounded-lg border border-slate-200">
+              <table className="w-full text-xs">
+                <thead className="bg-slate-50 text-left text-[10px] uppercase tracking-wide text-slate-500">
+                  <tr>
+                    <th className="px-3 py-2 font-medium">Name</th>
+                    <th className="px-3 py-2 font-medium">Token</th>
+                    <th className="px-3 py-2 font-medium">Last used</th>
+                    <th className="px-3 py-2 font-medium">Status</th>
+                    <th className="px-3 py-2"></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {tokens.map((t) => {
+                    const revoked = !!t.revokedAt;
+                    const expired =
+                      !!t.expiresAt &&
+                      new Date(t.expiresAt).getTime() < Date.now();
+                    return (
+                      <tr
+                        key={t.id}
+                        className={`border-t border-slate-100 ${
+                          revoked || expired ? "opacity-50" : ""
+                        }`}
+                      >
+                        <td className="px-3 py-2 font-medium text-slate-800">
+                          {t.name}
+                        </td>
+                        <td className="px-3 py-2 font-mono text-slate-500">
+                          {t.prefix}…
+                        </td>
+                        <td className="px-3 py-2 text-slate-500">
+                          {t.lastUsedAt
+                            ? new Date(t.lastUsedAt).toLocaleString()
+                            : "—"}
+                        </td>
+                        <td className="px-3 py-2">
+                          {revoked ? (
+                            <span className="rounded-full bg-slate-200 px-2 py-0.5 text-[10px] font-semibold text-slate-600">
+                              REVOKED
+                            </span>
+                          ) : expired ? (
+                            <span className="rounded-full bg-slate-200 px-2 py-0.5 text-[10px] font-semibold text-slate-600">
+                              EXPIRED
+                            </span>
+                          ) : (
+                            <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-semibold text-emerald-700">
+                              ACTIVE
+                            </span>
+                          )}
+                        </td>
+                        <td className="px-3 py-2 text-right">
+                          {!revoked && !expired && (
+                            <button
+                              type="button"
+                              onClick={() => revoke(t.id, t.name)}
+                              className="text-xs font-medium text-red-600 hover:underline"
+                            >
+                              Revoke
+                            </button>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
 
         <div>
           <div className="mb-1 text-xs font-medium text-slate-600">
@@ -326,16 +514,16 @@ function McpCard() {
             <code className="block w-full overflow-x-auto rounded-lg bg-slate-900 px-3 py-2 font-mono text-xs text-slate-100">
               {claudeCmd}
             </code>
-            <Button variant="secondary" onClick={() => copy("cmd", claudeCmd.replace("<token>", token))}>
+            <Button variant="secondary" onClick={() => copy("cmd", claudeCmd)}>
               {copied === "cmd" ? "Copied" : "Copy"}
             </Button>
           </div>
           <p className="mt-2 text-xs text-slate-500">
             For Claude Desktop or claude.ai, add a custom connector with the
             endpoint above and header{" "}
-            <code className="rounded bg-slate-100 px-1">Authorization: Bearer &lt;token&gt;</code>.
-            Tokens follow your login session — for a long-lived integration,
-            mint a dedicated service token. Full guide:{" "}
+            <code className="rounded bg-slate-100 px-1">Authorization: Bearer &lt;your-token&gt;</code>
+            . Tokens are scoped to your role and never expire unless you
+            revoke them. Full guide:{" "}
             <a className="text-brand-600 hover:underline" href="/docs" target="_blank" rel="noreferrer">
               API docs
             </a>
