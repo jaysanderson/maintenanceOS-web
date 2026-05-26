@@ -14,6 +14,8 @@ interface CompanyConfig {
   marginRiskThreshold: number;
   defaultPaymentTerms: string;
   aiConfidenceThreshold: number;
+  mcpPublicAccess: boolean;
+  mcpPublicUserId: string | null;
 }
 
 type Counts = Record<string, number>;
@@ -292,6 +294,8 @@ function McpCard() {
   const [createErr, setCreateErr] = useState<string | null>(null);
   const [justCreated, setJustCreated] = useState<CreatedToken | null>(null);
   const [copied, setCopied] = useState<string | null>(null);
+  const [publicAccess, setPublicAccess] = useState<boolean | null>(null);
+  const [togglingPublic, setTogglingPublic] = useState(false);
 
   const copy = (label: string, value: string) => {
     navigator.clipboard?.writeText(value).then(
@@ -311,7 +315,38 @@ function McpCard() {
 
   useEffect(() => {
     load();
+    // Read the public-access flag separately so the toggle reflects the
+    // server's actual state (and survives page refresh).
+    api
+      .get<CompanyConfig>("/settings")
+      .then((c) => setPublicAccess(!!c.mcpPublicAccess))
+      .catch(() => setPublicAccess(false));
   }, []);
+
+  const togglePublic = async (next: boolean) => {
+    if (
+      next &&
+      !confirm(
+        "Enable public MCP access?\n\n" +
+          "Anyone with the URL will be able to read and act on your data " +
+          "WITHOUT authentication, acting as your current user.\n\n" +
+          "Only do this for tests or controlled demos. Turn it off when done."
+      )
+    ) {
+      return;
+    }
+    setTogglingPublic(true);
+    try {
+      const updated = await api.put<CompanyConfig>("/settings", {
+        mcpPublicAccess: next,
+      });
+      setPublicAccess(!!updated.mcpPublicAccess);
+    } catch (e) {
+      alert("Could not update: " + (e as Error).message);
+    } finally {
+      setTogglingPublic(false);
+    }
+  };
 
   const createToken = async () => {
     if (!newName.trim() || creating) return;
@@ -368,6 +403,48 @@ function McpCard() {
             </Button>
           </div>
         </Field>
+
+        <div
+          className={`rounded-lg border-2 p-3 ${
+            publicAccess
+              ? "border-red-300 bg-red-50"
+              : "border-slate-200"
+          }`}
+        >
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0">
+              <div className="flex items-center gap-2">
+                <h4 className="text-sm font-semibold text-slate-800">
+                  Public access (no auth required)
+                </h4>
+                {publicAccess && (
+                  <span className="rounded-full bg-red-600 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-white">
+                    Open to the internet
+                  </span>
+                )}
+              </div>
+              <p className="mt-1 text-xs text-slate-600">
+                When on, anyone can POST to{" "}
+                <code className="rounded bg-slate-100 px-1 font-mono">/mcp</code>{" "}
+                without a token and will act as you. Use this for tests and
+                public demos only — turn it off when you're done.
+              </p>
+            </div>
+            <label className="flex shrink-0 items-center gap-2">
+              <span className="text-xs font-medium text-slate-600">
+                {publicAccess === null ? "…" : publicAccess ? "ON" : "OFF"}
+              </span>
+              <input
+                type="checkbox"
+                checked={!!publicAccess}
+                disabled={publicAccess === null || togglingPublic}
+                onChange={(e) => togglePublic(e.target.checked)}
+                className="h-5 w-5 cursor-pointer accent-red-600"
+                aria-label="Enable public MCP access"
+              />
+            </label>
+          </div>
+        </div>
 
         <div className="rounded-lg border border-slate-200 p-3">
           <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
