@@ -24,6 +24,7 @@ import Recurring from "./pages/Recurring";
 import Copilot from "./pages/Copilot";
 import Playbooks from "./pages/Playbooks";
 import OpsAssistant from "./pages/OpsAssistant";
+import Insights from "./pages/Insights";
 
 export default function App() {
   const { user, loading } = useAuth();
@@ -55,6 +56,7 @@ export default function App() {
         <Route path="/copilot" element={<Copilot />} />
         <Route path="/playbooks" element={<Playbooks />} />
         <Route path="/ops-assistant" element={<OpsAssistant />} />
+        <Route path="/insights" element={<Insights />} />
         <Route path="/accounts" element={<Accounts />} />
         <Route path="/accounts/:id" element={<AccountDetail />} />
         <Route path="/sites" element={<Sites />} />

@@ -3,6 +3,8 @@ import { useOne, useApiMutation } from "../lib/hooks";
 import { api, currency, date, openAuthed } from "../lib/api";
 import { Quote } from "../lib/types";
 import { PageState, Card, Badge, Button } from "../components/ui";
+import { AiAssist, AiText } from "../components/AiAssist";
+import { aiQuoteRisk, aiQuoteComms } from "../lib/ai";
 
 export default function QuoteDetail() {
   const { id } = useParams();
@@ -83,6 +85,32 @@ export default function QuoteDetail() {
               </Button>
             </Card>
           )}
+
+          <div className="grid gap-3 lg:grid-cols-2">
+            <AiAssist
+              title="Pricing risk check"
+              description="Compare this quote's margin against comparable jobs."
+              label="Check"
+              autoRunKey={id}
+              run={() => aiQuoteRisk(id!)}
+              render={(d) => (
+                <div className="space-y-2">
+                  <div className="text-xs text-slate-500">
+                    Margin {d.marginPercent}% vs comparable avg {d.comparableAvgMargin}%
+                  </div>
+                  <AiText text={d.narrative} />
+                </div>
+              )}
+            />
+            <AiAssist
+              title="Cover note"
+              description="Draft a friendly cover note to send with this quote."
+              label="Draft"
+              autoRunKey={id}
+              run={() => aiQuoteComms(id!, "cover")}
+              render={(d) => <AiText text={d.draft} />}
+            />
+          </div>
         </div>
       )}
     </PageState>

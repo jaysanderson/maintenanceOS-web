@@ -22,6 +22,7 @@ import {
 } from "../components/ui";
 import { KnowledgeCopilot } from "../components/KnowledgeCopilot";
 import { DraftQuoteButton } from "../components/DraftQuoteButton";
+import { WorkOrderAiPanel } from "../components/WorkOrderAiPanel";
 
 const STATUSES = [
   "NEW", "TRIAGE", "QUOTE_REQUIRED", "AWAITING_APPROVAL", "APPROVED",
@@ -359,6 +360,10 @@ export default function WorkOrderDetail() {
                 )}
               </Card>
             </div>
+          </div>
+
+          <div className="mt-6">
+            <WorkOrderAiPanel workOrderId={wo.data.id} />
           </div>
         </div>
       )}

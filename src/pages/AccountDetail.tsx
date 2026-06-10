@@ -3,6 +3,8 @@ import { useOne } from "../lib/hooks";
 import { currency, date } from "../lib/api";
 import { Account } from "../lib/types";
 import { PageState, Card, Badge, Tabs } from "../components/ui";
+import { AiAssist, AiText } from "../components/AiAssist";
+import { aiAccountHealth, aiProactiveMaintenance, aiRecurringSuggest } from "../lib/ai";
 
 export default function AccountDetail() {
   const { id } = useParams();
@@ -123,6 +125,33 @@ export default function AccountDetail() {
               },
             ]}
           />
+
+          <div className="grid gap-3 lg:grid-cols-3">
+            <AiAssist
+              title="Account health"
+              description="Churn & payment-risk read from activity, margin and overdue invoices."
+              label="Assess"
+              autoRunKey={id}
+              run={() => aiAccountHealth(id!)}
+              render={(d) => <AiText text={d.narrative} />}
+            />
+            <AiAssist
+              title="Proactive maintenance"
+              description="Work worth proactively offering this customer now."
+              label="Suggest"
+              autoRunKey={id}
+              run={() => aiProactiveMaintenance(id!)}
+              render={(d) => <AiText text={d.suggestions} low={d.lowConfidence} />}
+            />
+            <AiAssist
+              title="Recurring plan"
+              description="Propose a recurring plan from this account's repeat work."
+              label="Propose"
+              autoRunKey={id}
+              run={() => aiRecurringSuggest(id!)}
+              render={(d) => <AiText text={d.suggestion} low={d.lowConfidence} />}
+            />
+          </div>
         </div>
       )}
     </PageState>

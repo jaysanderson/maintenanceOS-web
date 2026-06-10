@@ -1,9 +1,12 @@
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useList, useApiMutation } from "../lib/hooks";
 import { api, dateTime } from "../lib/api";
 import { WorkOrder, Employee } from "../lib/types";
-import { PageState, Card, Badge } from "../components/ui";
+import { PageState, Card, Badge, Button, inputCls } from "../components/ui";
 import { DispatchActions } from "../components/DispatchActions";
+import { AiText } from "../components/AiAssist";
+import { aiDayPlan, DayPlanResponse } from "../lib/ai";
 
 const ACTIVE = ["SCHEDULED", "DISPATCHED", "IN_PROGRESS", "WAITING_ON_PARTS"];
 
@@ -34,6 +37,7 @@ export default function Dispatch() {
     <PageState loading={orders.isLoading} error={orders.error}>
       <div className="space-y-6">
         <DispatchActions />
+        <DayPlanCard techs={techs} />
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
           <Card>
             <Header title="Unassigned Work Orders" count={unassigned.length} tone="warn" />
@@ -154,4 +158,50 @@ function Header({ title, count, tone }: { title: string; count: number; tone?: "
 
 function Empty({ children }: { children: React.ReactNode }) {
   return <div className="p-6 text-sm text-slate-500">{children}</div>;
+}
+
+function DayPlanCard({ techs }: { techs: Employee[] }) {
+  const [empId, setEmpId] = useState("");
+  const [date, setDate] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [plan, setPlan] = useState<DayPlanResponse | null>(null);
+  async function run() {
+    if (!empId) return;
+    setLoading(true);
+    setPlan(null);
+    try {
+      setPlan(await aiDayPlan(empId, date || undefined));
+    } finally {
+      setLoading(false);
+    }
+  }
+  return (
+    <Card className="space-y-3 p-4">
+      <div className="flex flex-wrap items-center gap-2">
+        <h3 className="text-sm font-semibold">Technician day-plan</h3>
+        <span className="rounded-full bg-brand-50 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-brand-600">ARAG</span>
+        <div className="ml-auto flex items-center gap-2">
+          <select className={`${inputCls} max-w-[180px]`} value={empId} onChange={(e) => setEmpId(e.target.value)}>
+            <option value="">Select technician…</option>
+            {techs.map((t) => (
+              <option key={t.id} value={t.id}>{t.firstName} {t.lastName}</option>
+            ))}
+          </select>
+          <input type="date" className={`${inputCls} max-w-[160px]`} value={date} onChange={(e) => setDate(e.target.value)} />
+          <Button variant="secondary" disabled={!empId || loading} onClick={run}>
+            {loading ? "Planning…" : "Plan day"}
+          </Button>
+        </div>
+      </div>
+      {plan && (
+        <div className="space-y-2">
+          <div className="text-xs text-slate-500">
+            {plan.technician} · {plan.date} · {plan.jobs.length} job{plan.jobs.length === 1 ? "" : "s"}
+            {plan.clashes.length > 0 && <span className="ml-1 font-medium text-amber-700">· {plan.clashes.length} clash(es)</span>}
+          </div>
+          <AiText text={plan.narrative} low={plan.clashes.length > 0} />
+        </div>
+      )}
+    </Card>
+  );
 }
