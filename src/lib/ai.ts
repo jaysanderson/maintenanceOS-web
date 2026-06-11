@@ -290,8 +290,10 @@ export const aiBriefing = () => api.get<BriefingResponse>("/ai/briefing");
 // ── F5 Dispatcher Next-Best-Action ───────────────────────────────────────
 export interface DispatchAction {
   workOrder: string;
+  workOrderId: string | null;
   action: "ASSIGN" | "ESCALATE" | "RESCHEDULE";
   recommendedTechnician: string | null;
+  recommendedTechnicianId: string | null;
   reason: string;
 }
 export interface DispatchActionsResponse {
