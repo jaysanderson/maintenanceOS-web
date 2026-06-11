@@ -1,8 +1,7 @@
 import { useRef, useState } from "react";
 import { useList, useApiMutation } from "../lib/hooks";
 import { api, currency, date } from "../lib/api";
-import { aiExtractDocument } from "../lib/ai";
-import { ApiError } from "../lib/api";
+import { aiExtractDocumentStream } from "../lib/ai";
 import {
   PurchaseOrder,
   InventoryLocation,
@@ -57,6 +56,7 @@ export default function PurchaseOrders() {
   // ── Import from document (J1) ──
   const fileInput = useRef<HTMLInputElement>(null);
   const [importing, setImporting] = useState(false);
+  const [importStep, setImportStep] = useState<string>("");
   const [importError, setImportError] = useState<string | null>(null);
   const [importedFrom, setImportedFrom] = useState<string | null>(null);
 
@@ -70,49 +70,47 @@ export default function PurchaseOrders() {
     create.reset();
   };
 
-  async function onImportFile(e: React.ChangeEvent<HTMLInputElement>) {
+  function onImportFile(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     e.target.value = ""; // allow re-selecting the same file
     if (!file) return;
     setImporting(true);
     setImportError(null);
-    try {
-      const r = await aiExtractDocument(file);
-      if (!r.draft || r.lowConfidence) {
-        setImportError(
-          r.message ?? "Couldn't read a purchase order from that document."
+    setImportStep("Uploading the document…");
+    aiExtractDocumentStream(file, {
+      onProgress: (m) => setImportStep(m),
+      onError: (m) => {
+        setImportError(m);
+        setImporting(false);
+        setImportStep("");
+      },
+      onResult: (r) => {
+        setImporting(false);
+        setImportStep("");
+        if (!r.draft || r.lowConfidence) {
+          setImportError(r.message ?? "Couldn't read a purchase order from that document.");
+          return;
+        }
+        const d = r.draft;
+        resetForm();
+        setSupplierId(d.matchedSupplierId ?? "");
+        setExpectedDate(d.expectedDate ? d.expectedDate.slice(0, 10) : "");
+        setNotes(d.supplierRef ? `Imported from supplier ref ${d.supplierRef}` : "");
+        setLines(
+          d.lines.length
+            ? d.lines.map((l) => ({
+                inventoryItemId: l.matchedItemId ?? "",
+                quantity: l.quantity || 1,
+                unitCost: l.unitCost || 0,
+                extractedDescription: l.description,
+                matchBy: l.matchBy,
+              }))
+            : [{ inventoryItemId: "", quantity: 1, unitCost: 0 }]
         );
-        return;
-      }
-      const d = r.draft;
-      resetForm();
-      setSupplierId(d.matchedSupplierId ?? "");
-      setExpectedDate(d.expectedDate ? d.expectedDate.slice(0, 10) : "");
-      setNotes(
-        d.supplierRef ? `Imported from supplier ref ${d.supplierRef}` : ""
-      );
-      setLines(
-        d.lines.length
-          ? d.lines.map((l) => ({
-              inventoryItemId: l.matchedItemId ?? "",
-              quantity: l.quantity || 1,
-              unitCost: l.unitCost || 0,
-              extractedDescription: l.description,
-              matchBy: l.matchBy,
-            }))
-          : [{ inventoryItemId: "", quantity: 1, unitCost: 0 }]
-      );
-      setImportedFrom(d.matchedSupplierName ?? d.supplierName ?? "document");
-      setOpen(true);
-    } catch (err) {
-      setImportError(
-        err instanceof ApiError && err.status === 503
-          ? "Vision extraction isn't configured on the server (needs a NUA key)."
-          : (err as Error).message
-      );
-    } finally {
-      setImporting(false);
-    }
+        setImportedFrom(d.matchedSupplierName ?? d.supplierName ?? "document");
+        setOpen(true);
+      },
+    });
   }
 
   const unmatchedCount = lines.filter(
@@ -180,7 +178,7 @@ export default function PurchaseOrders() {
             onClick={() => fileInput.current?.click()}
             title="Upload a supplier PO or order confirmation; AI extracts a draft"
           >
-            {importing ? "Reading document…" : "✶ Import from document"}
+            {importing ? "Importing…" : "✶ Import from document"}
           </Button>
           <Button
             onClick={() => {
@@ -192,6 +190,13 @@ export default function PurchaseOrders() {
           </Button>
         </div>
       </div>
+      {importing && (
+        <div className="flex items-center gap-3 rounded-lg border border-brand-100 bg-brand-50/50 px-3 py-2 text-sm text-brand-800">
+          <span className="h-4 w-4 shrink-0 animate-spin rounded-full border-2 border-brand-200 border-t-brand-600" />
+          <span>{importStep || "Working…"}</span>
+          <span className="text-xs text-slate-400">· reading a document can take up to a minute</span>
+        </div>
+      )}
       {importError && (
         <div className="rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-800">
           {importError}

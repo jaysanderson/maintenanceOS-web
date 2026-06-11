@@ -1,4 +1,4 @@
-import { api, uploadAuthed, tokenStore } from "./api";
+import { api, tokenStore } from "./api";
 
 /** A label filter, e.g. { labelset: "doctype", label: "work-order" }. */
 export interface AiFilter {
@@ -110,9 +110,68 @@ export interface ExtractDocumentResponse {
   message?: string;
   model: string;
 }
-/** Upload a supplier document and get a draft purchase order back. */
-export const aiExtractDocument = (file: File) =>
-  uploadAuthed<ExtractDocumentResponse>("/ai/extract-document", file);
+export interface ExtractDocHandlers {
+  onProgress: (message: string) => void;
+  onResult: (r: ExtractDocumentResponse) => void;
+  onError: (message: string) => void;
+}
+/**
+ * Upload a supplier document and stream the extraction progress (uploading,
+ * reading/OCR, extracting, matching) — OCR + structuring can take 20-40s, so
+ * the user sees what's happening — then receives the draft purchase order.
+ */
+export async function aiExtractDocumentStream(file: File, h: ExtractDocHandlers): Promise<void> {
+  const token = tokenStore.get();
+  const form = new FormData();
+  form.append("file", file);
+  let res: Response;
+  try {
+    res = await fetch("/api/ai/extract-document", {
+      method: "POST",
+      headers: token ? { authorization: `Bearer ${token}` } : {},
+      body: form,
+    });
+  } catch (e) {
+    h.onError((e as Error).message);
+    return;
+  }
+  if (!res.ok || !res.body) {
+    let msg = `Upload failed (${res.status})`;
+    try {
+      const j = await res.json();
+      if (j?.error) msg = j.error;
+    } catch {
+      /* ignore */
+    }
+    h.onError(msg);
+    return;
+  }
+  const reader = res.body.getReader();
+  const decoder = new TextDecoder();
+  let buf = "";
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    buf += decoder.decode(value, { stream: true });
+    const parts = buf.split("\n\n");
+    buf = parts.pop() ?? "";
+    for (const part of parts) {
+      const dataLine = part.split("\n").find((l) => l.startsWith("data:"));
+      if (!dataLine) continue;
+      const t = dataLine.replace(/^data:\s*/, "").trim();
+      if (!t.startsWith("{")) continue;
+      let d: { type?: string; message?: string } & Partial<ExtractDocumentResponse>;
+      try {
+        d = JSON.parse(t);
+      } catch {
+        continue;
+      }
+      if (d.type === "progress" && d.message) h.onProgress(d.message);
+      else if (d.type === "result") h.onResult(d as ExtractDocumentResponse);
+      else if (d.type === "error" && d.message) h.onError(d.message);
+    }
+  }
+}
 
 // ── Ops Assistant (streamed via the Retrieval Agent + live ERP MCP) ──────
 export interface OpsStreamHandlers {
