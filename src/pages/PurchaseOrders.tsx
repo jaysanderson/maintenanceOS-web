@@ -25,7 +25,7 @@ interface DraftLine {
   /** Original text from an imported document (shown when unmatched). */
   extractedDescription?: string;
   /** How this line was matched on import (null = needs a manual pick). */
-  matchBy?: "sku" | "name" | null;
+  matchBy?: "sku" | "name" | "fuzzy" | null;
 }
 
 export default function PurchaseOrders() {
@@ -344,8 +344,11 @@ export default function PurchaseOrders() {
                     {l.extractedDescription && (
                       <div className="mb-0.5 text-[11px] text-slate-400">
                         Document line: “{l.extractedDescription}”
-                        {l.matchBy === "name" && !unmatched && (
-                          <span className="ml-1 text-amber-600">(name match — confirm)</span>
+                        {l.matchBy === "fuzzy" && !unmatched && (
+                          <span className="ml-1 text-amber-600">(close match — confirm)</span>
+                        )}
+                        {(l.matchBy === "sku" || l.matchBy === "name") && !unmatched && (
+                          <span className="ml-1 text-green-600">✓ matched</span>
                         )}
                       </div>
                     )}

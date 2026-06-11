@@ -92,7 +92,7 @@ export interface DraftPoLine {
   matchedItemId: string | null;
   matchedItemName: string | null;
   matchedSku: string | null;
-  matchBy: "sku" | "name" | null;
+  matchBy: "sku" | "name" | "fuzzy" | null;
 }
 export interface PurchaseOrderDraft {
   supplierName: string | null;
