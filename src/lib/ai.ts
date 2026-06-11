@@ -1,4 +1,4 @@
-import { api, uploadAuthed } from "./api";
+import { api, uploadAuthed, tokenStore } from "./api";
 
 /** A label filter, e.g. { labelset: "doctype", label: "work-order" }. */
 export interface AiFilter {
@@ -114,15 +114,72 @@ export interface ExtractDocumentResponse {
 export const aiExtractDocument = (file: File) =>
   uploadAuthed<ExtractDocumentResponse>("/ai/extract-document", file);
 
-// ── Ops Assistant ────────────────────────────────────────────────────────
-export interface OpsAssistantResponse {
-  answer: string;
-  lowConfidence: boolean;
-  snapshotKeys: string[];
+// ── Ops Assistant (streamed via the Retrieval Agent + live ERP MCP) ──────
+export interface OpsStreamHandlers {
+  onProgress: (message: string) => void;
+  onAnswer: (text: string, lowConfidence: boolean) => void;
+  onError: (message: string) => void;
 }
-/** Ask a natural-language question over the live operations state. */
-export const aiOpsAssistant = (question: string) =>
-  api.post<OpsAssistantResponse>("/ai/ops-assistant", { question });
+/**
+ * Ask the operations question via the Retrieval Agent. The server streams the
+ * agent's progress (planning, querying the live ERP via MCP, writing) as SSE;
+ * we surface each step, then the final answer.
+ */
+export async function aiOpsAssistantStream(
+  question: string,
+  h: OpsStreamHandlers,
+  signal?: AbortSignal
+): Promise<void> {
+  const token = tokenStore.get();
+  let res: Response;
+  try {
+    res = await fetch("/api/ai/ops-assistant", {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        ...(token ? { authorization: `Bearer ${token}` } : {}),
+      },
+      body: JSON.stringify({ question }),
+      signal,
+    });
+  } catch (e) {
+    h.onError((e as Error).message);
+    return;
+  }
+  if (!res.ok || !res.body) {
+    h.onError(
+      res.status === 503
+        ? "The Retrieval Agent isn't configured on the server."
+        : `Request failed (${res.status})`
+    );
+    return;
+  }
+  const reader = res.body.getReader();
+  const decoder = new TextDecoder();
+  let buf = "";
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    buf += decoder.decode(value, { stream: true });
+    const parts = buf.split("\n\n");
+    buf = parts.pop() ?? "";
+    for (const part of parts) {
+      const dataLine = part.split("\n").find((l) => l.startsWith("data:"));
+      if (!dataLine) continue;
+      const t = dataLine.replace(/^data:\s*/, "").trim();
+      if (!t.startsWith("{")) continue;
+      let d: { type?: string; message?: string; text?: string; lowConfidence?: boolean };
+      try {
+        d = JSON.parse(t);
+      } catch {
+        continue;
+      }
+      if (d.type === "progress" && d.message) h.onProgress(d.message);
+      else if (d.type === "answer") h.onAnswer(d.text ?? "", !!d.lowConfidence);
+      else if (d.type === "error" && d.message) h.onError(d.message);
+    }
+  }
+}
 
 // ── F4 Daily Ops Briefing ────────────────────────────────────────────────
 export interface BriefingSlaBreach {

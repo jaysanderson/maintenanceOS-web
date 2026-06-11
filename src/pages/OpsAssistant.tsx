@@ -1,48 +1,58 @@
-import { useState, FormEvent } from "react";
+import { useState, useRef, FormEvent } from "react";
 import { Card, Button, inputCls } from "../components/ui";
 import { Markdown } from "../components/Markdown";
-import { aiOpsAssistant } from "../lib/ai";
-import { ApiError } from "../lib/api";
+import { aiOpsAssistantStream } from "../lib/ai";
 
 const SUGGESTIONS = [
-  "Which technicians have the most open jobs right now?",
+  "How many work orders are currently open?",
+  "Which technician has the most open jobs right now?",
   "How many SLA breaches do we have and which accounts are affected?",
-  "Which recent jobs lost the most margin and why?",
-  "What jobs are scheduled this week and who's assigned?",
   "Which accounts have the largest overdue invoices?",
+  "What jobs are scheduled this week and who's assigned?",
   "Where are we low on stock?",
 ];
 
 /**
- * "Ask your business" — NL questions over the live ERP state (open jobs,
- * SLA, invoices, technicians, margins, schedule, stock). Server gathers a
- * snapshot from Prisma and ARAG /predict/chat narrates a grounded answer.
+ * Ops Assistant — natural-language questions answered by the ARAG Retrieval
+ * Agent, which queries the LIVE ERP through the MaintenanceOS MCP tools. The
+ * agent's progress streams in (planning → querying → writing) so the user
+ * sees what's happening while it works.
  */
 export default function OpsAssistant() {
   const [q, setQ] = useState("");
-  const [loading, setLoading] = useState(false);
+  const [running, setRunning] = useState(false);
+  const [steps, setSteps] = useState<string[]>([]);
   const [answer, setAnswer] = useState<string | null>(null);
   const [lowConfidence, setLowConfidence] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const abortRef = useRef<AbortController | null>(null);
 
   async function run(question: string) {
-    if (!question.trim() || loading) return;
-    setLoading(true);
+    if (!question.trim() || running) return;
+    abortRef.current?.abort();
+    const ctrl = new AbortController();
+    abortRef.current = ctrl;
+    setRunning(true);
     setError(null);
     setAnswer(null);
-    try {
-      const r = await aiOpsAssistant(question.trim());
-      setAnswer(r.answer);
-      setLowConfidence(Boolean(r.lowConfidence));
-    } catch (e) {
-      setError(
-        e instanceof ApiError && e.status === 503
-          ? "AI is not configured on the server yet."
-          : (e as Error).message
-      );
-    } finally {
-      setLoading(false);
-    }
+    setSteps([]);
+    await aiOpsAssistantStream(
+      question.trim(),
+      {
+        onProgress: (m) =>
+          setSteps((s) => (s[s.length - 1] === m ? s : [...s, m])),
+        onAnswer: (text, low) => {
+          setAnswer(text);
+          setLowConfidence(low);
+          setRunning(false);
+        },
+        onError: (m) => {
+          setError(m);
+          setRunning(false);
+        },
+      },
+      ctrl.signal
+    );
   }
 
   function onSubmit(e: FormEvent) {
@@ -55,10 +65,9 @@ export default function OpsAssistant() {
       <div>
         <h1 className="text-xl font-semibold">Ops Assistant</h1>
         <p className="mt-1 text-sm text-slate-500">
-          Ask anything about your live operation — SLA breaches, technician
-          workload, schedule, margin risk, low stock, overdue invoices.
-          Answers are grounded in the current ERP state and cite real work
-          orders and invoices.
+          Ask anything about your live operation. An AI agent plans the
+          question, queries the live ERP through your MCP tools, and writes a
+          grounded answer — you'll see each step as it works.
         </p>
       </div>
 
@@ -67,7 +76,7 @@ export default function OpsAssistant() {
           <SparkIcon />
           <h3 className="font-semibold">Ask the operation</h3>
           <span className="rounded-full bg-brand-50 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-brand-600">
-            Live data + ARAG
+            Retrieval Agent · live MCP
           </span>
         </div>
 
@@ -79,12 +88,12 @@ export default function OpsAssistant() {
             placeholder="e.g. who's overbooked next week?"
             aria-label="Ask the ops assistant"
           />
-          <Button type="submit" disabled={loading || !q.trim()}>
-            {loading ? "Thinking…" : "Ask"}
+          <Button type="submit" disabled={running || !q.trim()}>
+            {running ? "Working…" : "Ask"}
           </Button>
         </form>
 
-        {!answer && !loading && !error && (
+        {!answer && !running && !error && (
           <div className="flex flex-wrap gap-2">
             {SUGGESTIONS.map((s) => (
               <button
@@ -106,22 +115,37 @@ export default function OpsAssistant() {
           <div className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{error}</div>
         )}
 
-        {loading && (
-          <div className="flex items-center gap-3 text-sm text-slate-400">
-            <div className="h-5 w-5 animate-spin rounded-full border-2 border-slate-300 border-t-brand-600" />
-            Reading the current operations state…
-          </div>
+        {/* Live activity log — keeps the user company while the agent runs */}
+        {(running || (steps.length > 0 && answer)) && (
+          <ol className="space-y-1.5 rounded-lg bg-slate-50 p-3">
+            {steps.map((s, i) => {
+              const isLast = i === steps.length - 1;
+              const active = running && isLast;
+              return (
+                <li key={i} className="flex items-center gap-2 text-sm">
+                  {active ? (
+                    <span className="h-3.5 w-3.5 shrink-0 animate-spin rounded-full border-2 border-slate-300 border-t-brand-600" />
+                  ) : (
+                    <span className="shrink-0 text-green-600">✓</span>
+                  )}
+                  <span className={active ? "text-slate-700" : "text-slate-400"}>{s}</span>
+                </li>
+              );
+            })}
+            {running && steps.length === 0 && (
+              <li className="flex items-center gap-2 text-sm text-slate-400">
+                <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-slate-300 border-t-brand-600" />
+                Contacting the agent…
+              </li>
+            )}
+          </ol>
         )}
 
         {answer && (
-          <div
-            className={`rounded-lg p-4 ${
-              lowConfidence ? "bg-amber-50" : "bg-slate-50"
-            }`}
-          >
+          <div className={`rounded-lg p-4 ${lowConfidence ? "bg-amber-50" : "bg-brand-50/40"}`}>
             {lowConfidence && (
               <div className="mb-2 flex items-center gap-2 text-xs font-medium uppercase tracking-wide text-amber-700">
-                <span aria-hidden>⚠</span> Not in the current ops snapshot
+                <span aria-hidden>⚠</span> Couldn't answer from the live data
               </div>
             )}
             <Markdown text={answer} />
