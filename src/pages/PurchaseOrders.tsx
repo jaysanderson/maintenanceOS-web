@@ -56,9 +56,20 @@ export default function PurchaseOrders() {
   // ── Import from document (J1) ──
   const fileInput = useRef<HTMLInputElement>(null);
   const [importing, setImporting] = useState(false);
-  const [importStep, setImportStep] = useState<string>("");
+  const [steps, setSteps] = useState<string[]>([]);
   const [importError, setImportError] = useState<string | null>(null);
   const [importedFrom, setImportedFrom] = useState<string | null>(null);
+  // Document being processed (preview + progress modal).
+  const [procOpen, setProcOpen] = useState(false);
+  const [preview, setPreview] = useState<{ url: string; type: string; name: string } | null>(null);
+
+  const closeProc = () => {
+    setProcOpen(false);
+    setImporting(false);
+    setSteps([]);
+    if (preview) URL.revokeObjectURL(preview.url);
+    setPreview(null);
+  };
 
   const resetForm = () => {
     setSupplierId("");
@@ -74,19 +85,25 @@ export default function PurchaseOrders() {
     const file = e.target.files?.[0];
     e.target.value = ""; // allow re-selecting the same file
     if (!file) return;
+    if (preview) URL.revokeObjectURL(preview.url);
+    setPreview({ url: URL.createObjectURL(file), type: file.type, name: file.name });
     setImporting(true);
     setImportError(null);
-    setImportStep("Uploading the document…");
+    setSteps(["Uploading the document…"]);
+    setProcOpen(true);
+    // Collapse the repeated "Reading the document… (Ns)" ticks into one line.
+    const base = (s: string) => s.replace(/\s*\(\d+s\)\s*$/, "");
     aiExtractDocumentStream(file, {
-      onProgress: (m) => setImportStep(m),
+      onProgress: (m) =>
+        setSteps((s) =>
+          s.length && base(s[s.length - 1]) === base(m) ? [...s.slice(0, -1), m] : [...s, m]
+        ),
       onError: (m) => {
         setImportError(m);
         setImporting(false);
-        setImportStep("");
       },
       onResult: (r) => {
         setImporting(false);
-        setImportStep("");
         if (!r.draft || r.lowConfidence) {
           setImportError(r.message ?? "Couldn't read a purchase order from that document.");
           return;
@@ -108,6 +125,7 @@ export default function PurchaseOrders() {
             : [{ inventoryItemId: "", quantity: 1, unitCost: 0 }]
         );
         setImportedFrom(d.matchedSupplierName ?? d.supplierName ?? "document");
+        closeProc();
         setOpen(true);
       },
     });
@@ -190,18 +208,6 @@ export default function PurchaseOrders() {
           </Button>
         </div>
       </div>
-      {importing && (
-        <div className="flex items-center gap-3 rounded-lg border border-brand-100 bg-brand-50/50 px-3 py-2 text-sm text-brand-800">
-          <span className="h-4 w-4 shrink-0 animate-spin rounded-full border-2 border-brand-200 border-t-brand-600" />
-          <span>{importStep || "Working…"}</span>
-          <span className="text-xs text-slate-400">· reading a document can take up to a minute</span>
-        </div>
-      )}
-      {importError && (
-        <div className="rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-800">
-          {importError}
-        </div>
-      )}
 
       <PageState
         loading={query.isLoading}
@@ -265,6 +271,62 @@ export default function PurchaseOrders() {
           {(receive.error as Error).message}
         </p>
       )}
+
+      {/* Processing modal — shows the uploaded document + live progress. */}
+      <Modal open={procOpen} onClose={closeProc} title="Reading your document">
+        <div className="space-y-4">
+          {preview && (
+            <div className="text-xs text-slate-500 truncate">
+              {preview.name}
+            </div>
+          )}
+          <div className="grid gap-4 sm:grid-cols-2">
+            {/* Document preview */}
+            <div className="overflow-hidden rounded-lg border border-slate-200 bg-slate-50" style={{ height: 320 }}>
+              {preview?.type?.startsWith("image/") ? (
+                <img src={preview.url} alt="Uploaded document" className="h-full w-full object-contain" />
+              ) : preview ? (
+                <embed src={preview.url} type="application/pdf" className="h-full w-full" />
+              ) : null}
+            </div>
+            {/* Live progress */}
+            <div className="flex flex-col">
+              <div className="text-sm font-medium text-slate-700">
+                {importError ? "We hit a snag" : "AI is reading your document"}
+              </div>
+              <p className="mt-1 text-xs text-slate-400">
+                Extracting the supplier, dates and line items, then matching to your catalogue. This can take up to a minute.
+              </p>
+              <ol className="mt-3 space-y-1.5">
+                {steps.map((s, i) => {
+                  const last = i === steps.length - 1;
+                  const active = importing && last && !importError;
+                  return (
+                    <li key={i} className="flex items-center gap-2 text-sm">
+                      {active ? (
+                        <span className="h-3.5 w-3.5 shrink-0 animate-spin rounded-full border-2 border-slate-300 border-t-brand-600" />
+                      ) : (
+                        <span className="shrink-0 text-green-600">✓</span>
+                      )}
+                      <span className={active ? "text-slate-700" : "text-slate-400"}>{s}</span>
+                    </li>
+                  );
+                })}
+              </ol>
+              {importError && (
+                <div className="mt-3 rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-800">
+                  {importError}
+                </div>
+              )}
+              {!importing && (
+                <div className="mt-auto pt-3">
+                  <Button variant="secondary" onClick={closeProc}>Close</Button>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      </Modal>
 
       <Modal
         open={open}

@@ -1,9 +1,11 @@
 import { KnowledgeCopilot } from "../components/KnowledgeCopilot";
 
 /**
- * F1 — global Knowledge Copilot page. Grounded, cited Q&A across the whole
- * MaintenanceOS knowledge base (work orders, accounts, quotes, invoices,
- * and safety/policy docs) via Progress Agentic RAG.
+ * F1 — Knowledge Copilot. Grounded, cited search over the UNSTRUCTURED
+ * documents in the knowledge base (safety, policy and compliance docs) —
+ * scoped to `doctype=policy` so it answers from documentation, not the live
+ * ERP records (those belong to the Ops Assistant). Powered by Progress
+ * Agentic RAG.
  */
 export default function Copilot() {
   return (
@@ -11,17 +13,21 @@ export default function Copilot() {
       <div>
         <h1 className="text-xl font-semibold">Knowledge Copilot</h1>
         <p className="mt-1 text-sm text-slate-500">
-          Ask anything about your operation. Answers are grounded in your live
-          ERP data and safety documentation, with sources cited.
+          Search your safety, policy and compliance documents. Answers are
+          grounded in the source documents and cite where they came from. For
+          live operational questions (open jobs, SLA, invoices), use the Ops
+          Assistant.
         </p>
       </div>
       <KnowledgeCopilot
-        title="Ask the operation"
+        title="Search the knowledge base"
+        placeholder="Ask about safety procedures, policies, compliance…"
+        scopeFilters={[{ labelset: "doctype", label: "policy" }]}
         suggestions={[
-          "Which accounts have SLA-breached work orders right now?",
+          "What electrical isolation procedure should a technician follow?",
           "What safety steps apply to a two-storey gutter clean?",
-          "Which recent jobs are at margin risk and why?",
-          "What electrical isolation procedure should a tech follow?",
+          "What does our Working at Heights policy require?",
+          "What PPE and controls apply to electrical work?",
         ]}
       />
     </div>
