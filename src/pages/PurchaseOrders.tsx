@@ -416,7 +416,7 @@ export default function PurchaseOrders() {
                     )}
                     <div className="flex items-center gap-2">
                       <select
-                        className={`${inputCls} flex-1 ${
+                        className={`${inputCls} min-w-0 flex-1 ${
                           unmatched ? "border-amber-400 ring-1 ring-amber-300" : ""
                         }`}
                         value={l.inventoryItemId}
@@ -441,7 +441,9 @@ export default function PurchaseOrders() {
                       </select>
                       <input
                         type="number"
-                        className={`${inputCls} w-20`}
+                        className={`${inputCls} flex-none`}
+                        style={{ width: "4.5rem" }}
+                        aria-label="Quantity"
                         value={l.quantity}
                         min={1}
                         onChange={(e) =>
@@ -450,7 +452,9 @@ export default function PurchaseOrders() {
                       />
                       <input
                         type="number"
-                        className={`${inputCls} w-24`}
+                        className={`${inputCls} flex-none`}
+                        style={{ width: "6rem" }}
+                        aria-label="Unit cost"
                         value={l.unitCost}
                         min={0}
                         step="0.01"
