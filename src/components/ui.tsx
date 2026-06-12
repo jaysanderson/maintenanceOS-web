@@ -231,16 +231,26 @@ export function Modal({
   onClose,
   title,
   children,
+  size = "lg",
 }: {
   open: boolean;
   onClose: () => void;
   title: string;
   children: ReactNode;
+  size?: "md" | "lg" | "xl" | "2xl";
 }) {
   if (!open) return null;
+  const maxW =
+    size === "2xl"
+      ? "max-w-2xl"
+      : size === "xl"
+        ? "max-w-xl"
+        : size === "md"
+          ? "max-w-md"
+          : "max-w-lg";
   return (
     <div className="fixed inset-0 z-50 flex items-start justify-center bg-slate-900/40 p-4 pt-20">
-      <Card className="w-full max-w-lg">
+      <Card className={`w-full ${maxW}`}>
         <div className="flex items-center justify-between border-b border-slate-200 px-5 py-3">
           <h3 className="font-semibold">{title}</h3>
           <button

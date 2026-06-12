@@ -331,6 +331,7 @@ export default function PurchaseOrders() {
       <Modal
         open={open}
         onClose={() => setOpen(false)}
+        size="2xl"
         title={importedFrom ? "Review imported purchase order" : "New Purchase Order"}
       >
         <div className="space-y-3">
@@ -395,6 +396,16 @@ export default function PurchaseOrders() {
               >
                 + Add line
               </button>
+            </div>
+            <div className="mb-1 flex items-center gap-2 px-0.5 text-[10px] font-semibold uppercase tracking-wide text-slate-400">
+              <span className="min-w-0 flex-1">Item</span>
+              <span className="flex-none text-center" style={{ width: "4.5rem" }}>
+                Qty
+              </span>
+              <span className="flex-none text-right" style={{ width: "6rem" }}>
+                Unit cost
+              </span>
+              <span className="flex-none" style={{ width: "1.25rem" }} aria-hidden />
             </div>
             <div className="space-y-2">
               {lines.map((l, i) => {
@@ -462,16 +473,22 @@ export default function PurchaseOrders() {
                           setLine(i, { unitCost: Number(e.target.value) })
                         }
                       />
-                      {lines.length > 1 && (
-                        <button
-                          className="text-xs text-red-600 hover:underline"
-                          onClick={() =>
-                            setLines((ls) => ls.filter((_, idx) => idx !== i))
-                          }
-                        >
-                          ✕
-                        </button>
-                      )}
+                      <div
+                        className="flex flex-none justify-center"
+                        style={{ width: "1.25rem" }}
+                      >
+                        {lines.length > 1 && (
+                          <button
+                            className="text-xs text-red-600 hover:underline"
+                            aria-label="Remove line"
+                            onClick={() =>
+                              setLines((ls) => ls.filter((_, idx) => idx !== i))
+                            }
+                          >
+                            ✕
+                          </button>
+                        )}
+                      </div>
                     </div>
                   </div>
                 );
