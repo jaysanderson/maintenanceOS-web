@@ -97,11 +97,14 @@ export interface DraftPoLine {
 export interface PurchaseOrderDraft {
   supplierName: string | null;
   supplierRef: string | null;
+  poRef: string | null;
   orderDate: string | null;
   expectedDate: string | null;
   currency: string | null;
   matchedSupplierId: string | null;
   matchedSupplierName: string | null;
+  matchedPurchaseOrderId: string | null;
+  matchedPurchaseOrderNumber: string | null;
   lines: DraftPoLine[];
 }
 export interface ExtractDocumentResponse {

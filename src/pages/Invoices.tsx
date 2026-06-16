@@ -1,7 +1,7 @@
 import { useRef, useState } from "react";
 import { useList, useApiMutation } from "../lib/hooks";
 import { api, currency, date, openAuthed } from "../lib/api";
-import { Invoice, SupplierBill, Supplier, WorkOrder, Account } from "../lib/types";
+import { Invoice, SupplierBill, Supplier, WorkOrder, Account, PurchaseOrder } from "../lib/types";
 import {
   PageState,
   DataTable,
@@ -300,6 +300,7 @@ function isOverdue(b: SupplierBill): boolean {
 function SupplierBills() {
   const query = useList<SupplierBill[]>("/supplier-bills");
   const suppliers = useList<Supplier[]>("/suppliers");
+  const purchaseOrders = useList<PurchaseOrder[]>("/purchase-orders");
 
   const setBillStatus = useApiMutation(
     ({ id, status }: { id: string; status: string }) =>
@@ -316,6 +317,8 @@ function SupplierBills() {
   const [importedFrom, setImportedFrom] = useState<string | null>(null);
   const [supplierId, setSupplierId] = useState("");
   const [supplierRef, setSupplierRef] = useState("");
+  const [purchaseOrderId, setPurchaseOrderId] = useState("");
+  const [poAutoMatched, setPoAutoMatched] = useState(false);
   const [issueDate, setIssueDate] = useState("");
   const [dueDate, setDueDate] = useState("");
   const [tax, setTax] = useState(0);
@@ -328,6 +331,8 @@ function SupplierBills() {
     setImportedFrom(null);
     setSupplierId("");
     setSupplierRef("");
+    setPurchaseOrderId("");
+    setPoAutoMatched(false);
     setIssueDate("");
     setDueDate("");
     setTax(0);
@@ -389,6 +394,8 @@ function SupplierBills() {
         resetForm();
         setSupplierId(d.matchedSupplierId ?? "");
         setSupplierRef(d.supplierRef ?? "");
+        setPurchaseOrderId(d.matchedPurchaseOrderId ?? "");
+        setPoAutoMatched(!!d.matchedPurchaseOrderId);
         setIssueDate(d.orderDate ? d.orderDate.slice(0, 10) : "");
         setDueDate(d.expectedDate ? d.expectedDate.slice(0, 10) : "");
         setLines(
@@ -417,6 +424,7 @@ function SupplierBills() {
       {
         supplierId,
         supplierRef: supplierRef || undefined,
+        purchaseOrderId: purchaseOrderId || undefined,
         issueDate: issueDate ? new Date(issueDate).toISOString() : undefined,
         dueDate: dueDate ? new Date(dueDate).toISOString() : undefined,
         tax: Number(tax) || 0,
@@ -485,6 +493,17 @@ function SupplierBills() {
               { header: "Bill #", cell: (b) => <span className="font-medium text-brand-600">{b.billNumber}</span> },
               { header: "Supplier", cell: (b) => b.supplier?.name ?? "—" },
               { header: "Supplier ref", cell: (b) => b.supplierRef ?? "—" },
+              {
+                header: "PO",
+                cell: (b) =>
+                  b.purchaseOrder?.poNumber ? (
+                    <span className="rounded bg-brand-50 px-1.5 py-0.5 text-xs font-medium text-brand-700">
+                      {b.purchaseOrder.poNumber}
+                    </span>
+                  ) : (
+                    <span className="text-slate-400">—</span>
+                  ),
+              },
               { header: "Issued", cell: (b) => date(b.issueDate) },
               {
                 header: "Due",
@@ -607,6 +626,29 @@ function SupplierBills() {
               <input type="date" className={inputCls} value={dueDate} onChange={(e) => setDueDate(e.target.value)} />
             </Field>
           </div>
+
+          <Field label="Linked purchase order (3-way match)">
+            <select
+              className={inputCls}
+              value={purchaseOrderId}
+              onChange={(e) => {
+                setPurchaseOrderId(e.target.value);
+                setPoAutoMatched(false);
+              }}
+            >
+              <option value="">— No PO (standalone) —</option>
+              {(purchaseOrders.data ?? [])
+                .filter((p) => !supplierId || p.supplierId === supplierId)
+                .map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.poNumber} · {p.supplier?.name ?? ""} · {p.status}
+                  </option>
+                ))}
+            </select>
+            {poAutoMatched && purchaseOrderId && (
+              <span className="mt-1 block text-[11px] text-green-600">✓ auto-matched from the document</span>
+            )}
+          </Field>
 
           <div>
             <div className="mb-1 flex items-center justify-between">
