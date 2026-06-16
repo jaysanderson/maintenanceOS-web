@@ -1,7 +1,7 @@
 import { useRef, useState } from "react";
 import { useList, useApiMutation } from "../lib/hooks";
 import { api, currency, date, openAuthed } from "../lib/api";
-import { Invoice, SupplierBill, Supplier } from "../lib/types";
+import { Invoice, SupplierBill, Supplier, WorkOrder, Account } from "../lib/types";
 import {
   PageState,
   DataTable,
@@ -54,12 +54,68 @@ function CustomerInvoices() {
     }
   }
 
+  // Raise-invoice modal — from a completed job (default) or manual.
+  const accounts = useList<Account[]>("/accounts");
+  const completedWOs = useList<WorkOrder[]>("/work-orders?status=COMPLETED");
+  const [raiseOpen, setRaiseOpen] = useState(false);
+  const [mode, setMode] = useState<"job" | "manual">("job");
+  const [woId, setWoId] = useState("");
+  const [accountId, setAccountId] = useState("");
+  const [subtotal, setSubtotal] = useState(0);
+  const [dueDays, setDueDays] = useState(30);
+  const [raiseNotes, setRaiseNotes] = useState("");
+
+  const fromJob = useApiMutation(
+    (id: string) => api.post(`/invoices/from-work-order/${id}`),
+    ["/invoices", "/dashboard", "/work-orders"]
+  );
+  const manual = useApiMutation(
+    (body: unknown) => api.post("/invoices", body),
+    ["/invoices", "/dashboard"]
+  );
+  const raising = fromJob.isPending || manual.isPending;
+  const raiseError = (fromJob.error || manual.error) as Error | null;
+
+  const openRaise = () => {
+    setMode("job");
+    setWoId("");
+    setAccountId("");
+    setSubtotal(0);
+    setDueDays(30);
+    setRaiseNotes("");
+    fromJob.reset();
+    manual.reset();
+    setRaiseOpen(true);
+  };
+  const submitRaise = () => {
+    const onSuccess = () => setRaiseOpen(false);
+    if (mode === "job") {
+      if (woId) fromJob.mutate(woId, { onSuccess });
+    } else {
+      manual.mutate(
+        {
+          accountId,
+          subtotal: Number(subtotal) || 0,
+          dueInDays: Number(dueDays) || 30,
+          notes: raiseNotes || undefined,
+        },
+        { onSuccess }
+      );
+    }
+  };
+  // Any completed (not-yet-invoiced) job can be invoiced — from its quote, or
+  // costed from actuals server-side when there's no quote.
+  const eligibleWOs = (completedWOs.data ?? []).filter((w) => w.status === "COMPLETED");
+
   return (
     <div className="space-y-4">
-      <select className={`${inputCls} max-w-xs`} value={status} onChange={(e) => setStatus(e.target.value)}>
-        <option value="">All statuses</option>
-        {INVOICE_STATUSES.map((s) => <option key={s} value={s}>{s}</option>)}
-      </select>
+      <div className="flex items-center justify-between gap-3">
+        <select className={`${inputCls} max-w-xs`} value={status} onChange={(e) => setStatus(e.target.value)}>
+          <option value="">All statuses</option>
+          {INVOICE_STATUSES.map((s) => <option key={s} value={s}>{s}</option>)}
+        </select>
+        <Button onClick={openRaise}>+ Raise invoice</Button>
+      </div>
 
       <PageState loading={query.isLoading} error={query.error} empty={query.data?.length === 0}>
         {query.data && (
@@ -142,6 +198,85 @@ function CustomerInvoices() {
             <p className="text-xs text-slate-400">Review before sending — this is a draft.</p>
           </div>
         )}
+      </Modal>
+
+      <Modal open={raiseOpen} onClose={() => setRaiseOpen(false)} title="Raise invoice">
+        <div className="space-y-3">
+          <Field label="Source">
+            <select className={inputCls} value={mode} onChange={(e) => setMode(e.target.value as "job" | "manual")}>
+              <option value="job">From a completed job</option>
+              <option value="manual">Manual</option>
+            </select>
+          </Field>
+
+          {mode === "job" ? (
+            <>
+              <Field label="Completed work order">
+                <select className={inputCls} value={woId} onChange={(e) => setWoId(e.target.value)}>
+                  <option value="">Select a completed job…</option>
+                  {eligibleWOs.map((w) => (
+                    <option key={w.id} value={w.id}>
+                      {w.workOrderNumber} · {w.account?.name ?? "—"}
+                    </option>
+                  ))}
+                </select>
+              </Field>
+              <p className="text-xs text-slate-400">
+                Generates a SENT invoice from the job's quote — or costed from its actual
+                labour and materials when there's no quote — GST included, and marks the
+                job invoiced.
+                {eligibleWOs.length === 0 && " No completed jobs awaiting invoicing right now."}
+              </p>
+            </>
+          ) : (
+            <>
+              <Field label="Account">
+                <select className={inputCls} value={accountId} onChange={(e) => setAccountId(e.target.value)}>
+                  <option value="">Select account…</option>
+                  {(accounts.data ?? []).map((a) => (
+                    <option key={a.id} value={a.id}>{a.name}</option>
+                  ))}
+                </select>
+              </Field>
+              <div className="grid grid-cols-2 gap-3">
+                <Field label="Subtotal (ex GST)">
+                  <input
+                    type="number"
+                    className={inputCls}
+                    value={subtotal}
+                    min={0}
+                    step="0.01"
+                    onChange={(e) => setSubtotal(Number(e.target.value))}
+                  />
+                </Field>
+                <Field label="Due in (days)">
+                  <input
+                    type="number"
+                    className={inputCls}
+                    value={dueDays}
+                    min={1}
+                    onChange={(e) => setDueDays(Number(e.target.value))}
+                  />
+                </Field>
+              </div>
+              <Field label="Notes">
+                <input className={inputCls} value={raiseNotes} onChange={(e) => setRaiseNotes(e.target.value)} />
+              </Field>
+              <p className="text-xs text-slate-400">GST is added automatically. Creates a DRAFT invoice.</p>
+            </>
+          )}
+
+          {raiseError && <p className="text-sm text-red-600">{raiseError.message}</p>}
+          <div className="flex justify-end gap-2 pt-2">
+            <Button variant="secondary" onClick={() => setRaiseOpen(false)}>Cancel</Button>
+            <Button
+              disabled={raising || (mode === "job" ? !woId : !accountId || Number(subtotal) <= 0)}
+              onClick={submitRaise}
+            >
+              {raising ? "Raising…" : "Raise invoice"}
+            </Button>
+          </div>
+        </div>
       </Modal>
     </div>
   );
