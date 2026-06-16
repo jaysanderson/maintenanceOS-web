@@ -254,6 +254,37 @@ export interface PurchaseOrderLine {
   inventoryItem?: InventoryItem;
 }
 
+// Accounts-payable: a bill received from a supplier (money we owe).
+export interface SupplierBillLine {
+  id: string;
+  supplierBillId: string;
+  inventoryItemId?: string | null;
+  description: string;
+  quantity: number;
+  unitCost: number;
+  total: number;
+  inventoryItem?: InventoryItem;
+}
+
+export interface SupplierBill {
+  id: string;
+  billNumber: string;
+  supplierRef?: string | null;
+  supplierId: string;
+  purchaseOrderId?: string | null;
+  status: string;
+  issueDate?: string | null;
+  dueDate?: string | null;
+  subtotal: number;
+  tax: number;
+  total: number;
+  notes?: string | null;
+  overdue?: boolean;
+  supplier?: Supplier;
+  purchaseOrder?: { id: string; poNumber: string } | null;
+  lines?: SupplierBillLine[];
+}
+
 export interface Vehicle {
   id: string;
   name: string;

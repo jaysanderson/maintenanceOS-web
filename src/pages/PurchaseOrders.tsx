@@ -1,7 +1,6 @@
-import { useRef, useState } from "react";
+import { useState } from "react";
 import { useList, useApiMutation } from "../lib/hooks";
 import { api, currency, date } from "../lib/api";
-import { aiExtractDocumentStream } from "../lib/ai";
 import {
   PurchaseOrder,
   InventoryLocation,
@@ -22,10 +21,6 @@ interface DraftLine {
   inventoryItemId: string;
   quantity: number;
   unitCost: number;
-  /** Original text from an imported document (shown when unmatched). */
-  extractedDescription?: string;
-  /** How this line was matched on import (null = needs a manual pick). */
-  matchBy?: "sku" | "name" | "fuzzy" | null;
 }
 
 export default function PurchaseOrders() {
@@ -53,94 +48,18 @@ export default function PurchaseOrders() {
     ["/purchase-orders"]
   );
 
-  // ── Import from document (J1) ──
-  const fileInput = useRef<HTMLInputElement>(null);
-  const [importing, setImporting] = useState(false);
-  const [steps, setSteps] = useState<string[]>([]);
-  const [importError, setImportError] = useState<string | null>(null);
-  const [importedFrom, setImportedFrom] = useState<string | null>(null);
-  // Document being processed (preview + progress modal).
-  const [procOpen, setProcOpen] = useState(false);
-  const [preview, setPreview] = useState<{ url: string; type: string; name: string } | null>(null);
-
-  const closeProc = () => {
-    setProcOpen(false);
-    setImporting(false);
-    setSteps([]);
-    if (preview) URL.revokeObjectURL(preview.url);
-    setPreview(null);
-  };
-
   const resetForm = () => {
     setSupplierId("");
     setExpectedDate("");
     setNotes("");
     setLines([{ inventoryItemId: "", quantity: 1, unitCost: 0 }]);
-    setImportedFrom(null);
-    setImportError(null);
     create.reset();
   };
-
-  function onImportFile(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    e.target.value = ""; // allow re-selecting the same file
-    if (!file) return;
-    if (preview) URL.revokeObjectURL(preview.url);
-    setPreview({ url: URL.createObjectURL(file), type: file.type, name: file.name });
-    setImporting(true);
-    setImportError(null);
-    setSteps(["Uploading the document…"]);
-    setProcOpen(true);
-    // Collapse the repeated "Reading the document… (Ns)" ticks into one line.
-    const base = (s: string) => s.replace(/\s*\(\d+s\)\s*$/, "");
-    aiExtractDocumentStream(file, {
-      onProgress: (m) =>
-        setSteps((s) =>
-          s.length && base(s[s.length - 1]) === base(m) ? [...s.slice(0, -1), m] : [...s, m]
-        ),
-      onError: (m) => {
-        setImportError(m);
-        setImporting(false);
-      },
-      onResult: (r) => {
-        setImporting(false);
-        if (!r.draft || r.lowConfidence) {
-          setImportError(r.message ?? "Couldn't read a purchase order from that document.");
-          return;
-        }
-        const d = r.draft;
-        resetForm();
-        setSupplierId(d.matchedSupplierId ?? "");
-        setExpectedDate(d.expectedDate ? d.expectedDate.slice(0, 10) : "");
-        setNotes(d.supplierRef ? `Imported from supplier ref ${d.supplierRef}` : "");
-        setLines(
-          d.lines.length
-            ? d.lines.map((l) => ({
-                inventoryItemId: l.matchedItemId ?? "",
-                quantity: l.quantity || 1,
-                unitCost: l.unitCost || 0,
-                extractedDescription: l.description,
-                matchBy: l.matchBy,
-              }))
-            : [{ inventoryItemId: "", quantity: 1, unitCost: 0 }]
-        );
-        setImportedFrom(d.matchedSupplierName ?? d.supplierName ?? "document");
-        closeProc();
-        setOpen(true);
-      },
-    });
-  }
-
-  const unmatchedCount = lines.filter(
-    (l) => l.extractedDescription && !l.inventoryItemId
-  ).length;
 
   const setLine = (i: number, patch: Partial<DraftLine>) =>
     setLines((ls) => ls.map((l, idx) => (idx === i ? { ...l, ...patch } : l)));
 
-  const validLines = lines.filter(
-    (l) => l.inventoryItemId && l.quantity > 0
-  );
+  const validLines = lines.filter((l) => l.inventoryItemId && l.quantity > 0);
   const draftTotal = validLines.reduce(
     (s, l) => s + l.quantity * l.unitCost,
     0
@@ -182,31 +101,14 @@ export default function PurchaseOrders() {
             ))}
           </select>
         </div>
-        <div className="flex items-center gap-2">
-          <input
-            ref={fileInput}
-            type="file"
-            accept="image/png,image/jpeg,image/webp,application/pdf"
-            className="hidden"
-            onChange={onImportFile}
-          />
-          <Button
-            variant="secondary"
-            disabled={importing}
-            onClick={() => fileInput.current?.click()}
-            title="Upload a supplier PO or order confirmation; AI extracts a draft"
-          >
-            {importing ? "Importing…" : "✶ Import from document"}
-          </Button>
-          <Button
-            onClick={() => {
-              resetForm();
-              setOpen(true);
-            }}
-          >
-            + New Purchase Order
-          </Button>
-        </div>
+        <Button
+          onClick={() => {
+            resetForm();
+            setOpen(true);
+          }}
+        >
+          + New Purchase Order
+        </Button>
       </div>
 
       <PageState
@@ -272,82 +174,13 @@ export default function PurchaseOrders() {
         </p>
       )}
 
-      {/* Processing modal — shows the uploaded document + live progress. */}
-      <Modal open={procOpen} onClose={closeProc} title="Reading your document">
-        <div className="space-y-4">
-          {preview && (
-            <div className="text-xs text-slate-500 truncate">
-              {preview.name}
-            </div>
-          )}
-          <div className="grid gap-4 sm:grid-cols-2">
-            {/* Document preview */}
-            <div className="overflow-hidden rounded-lg border border-slate-200 bg-slate-50" style={{ height: 320 }}>
-              {preview?.type?.startsWith("image/") ? (
-                <img src={preview.url} alt="Uploaded document" className="h-full w-full object-contain" />
-              ) : preview ? (
-                <embed src={preview.url} type="application/pdf" className="h-full w-full" />
-              ) : null}
-            </div>
-            {/* Live progress */}
-            <div className="flex flex-col">
-              <div className="text-sm font-medium text-slate-700">
-                {importError ? "We hit a snag" : "AI is reading your document"}
-              </div>
-              <p className="mt-1 text-xs text-slate-400">
-                Extracting the supplier, dates and line items, then matching to your catalogue. This can take up to a minute.
-              </p>
-              <ol className="mt-3 space-y-1.5">
-                {steps.map((s, i) => {
-                  const last = i === steps.length - 1;
-                  const active = importing && last && !importError;
-                  return (
-                    <li key={i} className="flex items-center gap-2 text-sm">
-                      {active ? (
-                        <span className="h-3.5 w-3.5 shrink-0 animate-spin rounded-full border-2 border-slate-300 border-t-brand-600" />
-                      ) : (
-                        <span className="shrink-0 text-green-600">✓</span>
-                      )}
-                      <span className={active ? "text-slate-700" : "text-slate-400"}>{s}</span>
-                    </li>
-                  );
-                })}
-              </ol>
-              {importError && (
-                <div className="mt-3 rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-800">
-                  {importError}
-                </div>
-              )}
-              {!importing && (
-                <div className="mt-auto pt-3">
-                  <Button variant="secondary" onClick={closeProc}>Close</Button>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      </Modal>
-
       <Modal
         open={open}
         onClose={() => setOpen(false)}
         size="2xl"
-        title={importedFrom ? "Review imported purchase order" : "New Purchase Order"}
+        title="New Purchase Order"
       >
         <div className="space-y-3">
-          {importedFrom && (
-            <div className="rounded-lg border border-brand-100 bg-brand-50 px-3 py-2 text-xs text-brand-800">
-              <span className="font-semibold">Extracted from {importedFrom}.</span>{" "}
-              Review every line before creating.
-              {unmatchedCount > 0 && (
-                <span className="font-medium text-amber-700">
-                  {" "}
-                  {unmatchedCount} line{unmatchedCount > 1 ? "s" : ""} couldn't be
-                  matched to your catalogue — pick an item or remove.
-                </span>
-              )}
-            </div>
-          )}
           <Field label="Supplier">
             <select
               className={inputCls}
@@ -408,91 +241,69 @@ export default function PurchaseOrders() {
               <span className="flex-none" style={{ width: "1.25rem" }} aria-hidden />
             </div>
             <div className="space-y-2">
-              {lines.map((l, i) => {
-                const unmatched = Boolean(
-                  l.extractedDescription && !l.inventoryItemId
-                );
-                return (
-                  <div key={i}>
-                    {l.extractedDescription && (
-                      <div className="mb-0.5 text-[11px] text-slate-400">
-                        Document line: “{l.extractedDescription}”
-                        {l.matchBy === "fuzzy" && !unmatched && (
-                          <span className="ml-1 text-amber-600">(close match — confirm)</span>
-                        )}
-                        {(l.matchBy === "sku" || l.matchBy === "name") && !unmatched && (
-                          <span className="ml-1 text-green-600">✓ matched</span>
-                        )}
-                      </div>
+              {lines.map((l, i) => (
+                <div key={i} className="flex items-center gap-2">
+                  <select
+                    className={`${inputCls} min-w-0 flex-1`}
+                    value={l.inventoryItemId}
+                    onChange={(e) => {
+                      const it = (items.data ?? []).find(
+                        (x) => x.id === e.target.value
+                      );
+                      setLine(i, {
+                        inventoryItemId: e.target.value,
+                        unitCost: it ? it.unitCost : l.unitCost,
+                      });
+                    }}
+                  >
+                    <option value="">Item…</option>
+                    {(items.data ?? []).map((it) => (
+                      <option key={it.id} value={it.id}>
+                        {it.sku} — {it.name}
+                      </option>
+                    ))}
+                  </select>
+                  <input
+                    type="number"
+                    className={`${inputCls} flex-none`}
+                    style={{ width: "4.5rem" }}
+                    aria-label="Quantity"
+                    value={l.quantity}
+                    min={1}
+                    onChange={(e) =>
+                      setLine(i, { quantity: Number(e.target.value) })
+                    }
+                  />
+                  <input
+                    type="number"
+                    className={`${inputCls} flex-none`}
+                    style={{ width: "6rem" }}
+                    aria-label="Unit cost"
+                    value={l.unitCost}
+                    min={0}
+                    step="0.01"
+                    onChange={(e) =>
+                      setLine(i, { unitCost: Number(e.target.value) })
+                    }
+                  />
+                  <div
+                    className="flex flex-none justify-center"
+                    style={{ width: "1.25rem" }}
+                  >
+                    {lines.length > 1 && (
+                      <button
+                        className="text-xs text-red-600 hover:underline"
+                        aria-label="Remove line"
+                        onClick={() =>
+                          setLines((ls) => ls.filter((_, idx) => idx !== i))
+                        }
+                      >
+                        ✕
+                      </button>
                     )}
-                    <div className="flex items-center gap-2">
-                      <select
-                        className={`${inputCls} min-w-0 flex-1 ${
-                          unmatched ? "border-amber-400 ring-1 ring-amber-300" : ""
-                        }`}
-                        value={l.inventoryItemId}
-                        onChange={(e) => {
-                          const it = (items.data ?? []).find(
-                            (x) => x.id === e.target.value
-                          );
-                          setLine(i, {
-                            inventoryItemId: e.target.value,
-                            unitCost: it ? it.unitCost : l.unitCost,
-                          });
-                        }}
-                      >
-                        <option value="">
-                          {unmatched ? "⚠ Pick a matching item…" : "Item…"}
-                        </option>
-                        {(items.data ?? []).map((it) => (
-                          <option key={it.id} value={it.id}>
-                            {it.sku} — {it.name}
-                          </option>
-                        ))}
-                      </select>
-                      <input
-                        type="number"
-                        className={`${inputCls} flex-none`}
-                        style={{ width: "4.5rem" }}
-                        aria-label="Quantity"
-                        value={l.quantity}
-                        min={1}
-                        onChange={(e) =>
-                          setLine(i, { quantity: Number(e.target.value) })
-                        }
-                      />
-                      <input
-                        type="number"
-                        className={`${inputCls} flex-none`}
-                        style={{ width: "6rem" }}
-                        aria-label="Unit cost"
-                        value={l.unitCost}
-                        min={0}
-                        step="0.01"
-                        onChange={(e) =>
-                          setLine(i, { unitCost: Number(e.target.value) })
-                        }
-                      />
-                      <div
-                        className="flex flex-none justify-center"
-                        style={{ width: "1.25rem" }}
-                      >
-                        {lines.length > 1 && (
-                          <button
-                            className="text-xs text-red-600 hover:underline"
-                            aria-label="Remove line"
-                            onClick={() =>
-                              setLines((ls) => ls.filter((_, idx) => idx !== i))
-                            }
-                          >
-                            ✕
-                          </button>
-                        )}
-                      </div>
-                    </div>
                   </div>
-                );
-              })}
+                </div>
+              ))}
             </div>
             <div className="mt-2 text-right text-sm text-slate-500">
               Estimated total: {currency(draftTotal)}
