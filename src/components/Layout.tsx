@@ -3,6 +3,7 @@ import { NavLink, useLocation } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "../lib/auth";
 import { api, dateTime } from "../lib/api";
+import { HelpChatbot } from "./HelpChatbot";
 
 interface NotifList {
   items: { id: string; type: string; message: string; createdAt: string; read: boolean }[];
@@ -179,6 +180,7 @@ export default function Layout({ children }: { children: ReactNode }) {
         </header>
         <main className="min-h-0 flex-1 overflow-y-auto p-6">{children}</main>
       </div>
+      {user && <HelpChatbot />}
     </div>
   );
 }
