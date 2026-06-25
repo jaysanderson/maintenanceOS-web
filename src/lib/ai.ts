@@ -491,3 +491,48 @@ export interface FaultRootCauseResponse {
 }
 export const aiFaultRootCause = (workOrderId: string) =>
   api.post<FaultRootCauseResponse>("/ai/fault-root-cause", { workOrderId });
+
+// UC6/UC8/UC10/UC2/UC3/UC9 — the "complete everything" batch
+export interface RiskWatchlistResponse {
+  accounts: { accountId: string; account: string; score: number; openJobs: number; slaRisk: number; overdueTotal: number; factors: string[] }[];
+  narrative: string;
+}
+export const aiRiskWatchlist = () => api.post<RiskWatchlistResponse>("/ai/risk-watchlist", {});
+
+export interface CostExceptionsResponse {
+  items: { workOrder: string; account: string; status: string; label: "partial" | "unresolved"; marginPercent: number; varianceFromQuote: number; detail: string }[];
+  scanned: number;
+  narrative: string;
+}
+export const aiCostExceptions = () => api.post<CostExceptionsResponse>("/ai/cost-exceptions", {});
+
+export interface ComplianceReadinessResponse {
+  metrics: { invoicesMissingDueDate: number; disputedBillsOpen: number; overdueInvoices: number; auditEntriesRecent: number; gstRatePct: number; marginRiskThresholdPct: number; defaultPaymentTerms: string };
+  narrative: string;
+  citations: string[];
+}
+export const aiComplianceReadiness = () => api.post<ComplianceReadinessResponse>("/ai/compliance-readiness", {});
+
+export interface CommitDateResponse {
+  workOrder: string; site: string; account: string;
+  parts: { item: string; needed: number; onHand: number; shortfall: number; poEta: string | null }[];
+  bindingConstraint: string; recommendedDate: string | null; targetDate: string | null; narrative: string;
+}
+export const aiCommitDate = (workOrderId: string, targetDate?: string) =>
+  api.post<CommitDateResponse>("/ai/commit-date", { workOrderId, targetDate });
+
+export interface AssetServiceResponse {
+  subject: { kind: string; name: string; detail: string };
+  dueInfo: string | null; narrative: string; citations: string[];
+}
+export const aiAssetService = (kind: "vehicle" | "asset", id: string, symptom: string) =>
+  api.post<AssetServiceResponse>("/ai/asset-service", { kind, id, symptom });
+
+export interface LotTraceResponse {
+  lot: string; item: { sku: string; name: string } | null;
+  received: { date: string; quantity: number; location: string | null; ref: string }[];
+  consumed: { workOrder: string; site: string; account: string; quantity: number; date: string }[];
+  accountsAffected: string[]; summary: string;
+}
+export const aiLots = () => api.post<{ lots: { lot: string; item: string; consumedOnJobs: number }[] }>("/ai/lots", {});
+export const aiLotTrace = (lot: string) => api.post<LotTraceResponse>("/ai/lot-trace", { lot });

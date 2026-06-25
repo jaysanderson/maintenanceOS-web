@@ -24,6 +24,7 @@ import { KnowledgeCopilot } from "../components/KnowledgeCopilot";
 import { DraftQuoteButton } from "../components/DraftQuoteButton";
 import { WorkOrderAiPanel } from "../components/WorkOrderAiPanel";
 import { FaultRootCause } from "../components/FaultRootCause";
+import { CommitDate } from "../components/CommitDate";
 
 const STATUSES = [
   "NEW", "TRIAGE", "QUOTE_REQUIRED", "AWAITING_APPROVAL", "APPROVED",
@@ -368,6 +369,9 @@ export default function WorkOrderDetail() {
           </div>
           <div className="mt-4">
             <FaultRootCause workOrderId={wo.data.id} />
+          </div>
+          <div className="mt-4">
+            <CommitDate workOrderId={wo.data.id} />
           </div>
         </div>
       )}

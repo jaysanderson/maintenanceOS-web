@@ -2,13 +2,16 @@ import { useList } from "../lib/hooks";
 import { date } from "../lib/api";
 import { Vehicle, Asset } from "../lib/types";
 import { PageState, DataTable, Badge, Tabs } from "../components/ui";
+import { AssetServiceCoPilot } from "../components/AssetServiceCoPilot";
 
 export default function Fleet() {
   const vehicles = useList<Vehicle[]>("/vehicles");
   const assets = useList<Asset[]>("/assets");
 
   return (
-    <Tabs
+    <div className="space-y-4">
+      <AssetServiceCoPilot />
+      <Tabs
       tabs={[
         {
           label: `Vehicles (${vehicles.data?.length ?? 0})`,
@@ -70,6 +73,7 @@ export default function Fleet() {
           ),
         },
       ]}
-    />
+      />
+    </div>
   );
 }

@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useList, useApiMutation } from "../lib/hooks";
 import { api, currency } from "../lib/api";
+import { LotTrace } from "../components/LotTrace";
 import { StockLevel, InventoryItem, InventoryLocation } from "../lib/types";
 import {
   PageState,
@@ -97,6 +98,7 @@ export default function Inventory() {
 
   return (
     <div className="space-y-4">
+      <LotTrace />
       <div className="flex items-center justify-between">
         <p className="text-sm text-slate-500">
           {rows.length} items · {lowCount} below reorder point

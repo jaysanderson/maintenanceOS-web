@@ -1,6 +1,7 @@
 import { useState, FormEvent } from "react";
 import { Card, Button, Badge, inputCls } from "../components/ui";
 import { AiAssist, AiText, primaryText } from "../components/AiAssist";
+import { RiskWatchlist, CostExceptions, ComplianceReadiness } from "../components/OpsPanels";
 import { Markdown } from "../components/Markdown";
 import { ApiError } from "../lib/api";
 import {
@@ -32,6 +33,12 @@ export default function Insights() {
           ARAG to narrate the current state — figures come from the database,
           never invented.
         </p>
+      </div>
+
+      <RiskWatchlist />
+      <div className="grid gap-4 lg:grid-cols-2">
+        <CostExceptions />
+        <ComplianceReadiness />
       </div>
 
       <div className="grid gap-4 lg:grid-cols-2">
