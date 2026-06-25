@@ -449,3 +449,27 @@ export const aiMarginInsight = () =>
   api.post<{ byJobType: { jobType: string; jobs: number; avgMarginPercent: number }[]; narrative: string }>("/ai/margin-insight", {});
 export const aiExecSummary = () =>
   api.post<{ summary: string; data: Record<string, unknown> }>("/ai/exec-summary", {});
+
+// UC1B/UC7 — finance exception explainer + auto-fix
+export interface FinanceExceptionItem {
+  type: "bill" | "invoice";
+  id: string;
+  ref: string;
+  party: string;
+  detail: string;
+  fix: { action: "link-po"; purchaseOrderId: string; poNumber: string } | null;
+}
+export interface FinanceExceptionGroup {
+  kind: string;
+  title: string;
+  severity: "high" | "medium" | "low";
+  explanation: string;
+  items: FinanceExceptionItem[];
+}
+export interface FinanceExceptionsResponse {
+  groups: FinanceExceptionGroup[];
+  scanned: { bills: number; invoices: number };
+  policy: { answer: string; citations: string[] } | null;
+}
+export const aiFinanceExceptions = () =>
+  api.post<FinanceExceptionsResponse>("/ai/finance-exceptions", {});

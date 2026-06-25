@@ -13,6 +13,7 @@ import {
   Tabs,
 } from "../components/ui";
 import { Markdown } from "../components/Markdown";
+import { FinanceExceptions } from "../components/FinanceExceptions";
 import { aiDunningDraft, aiExtractDocumentStream } from "../lib/ai";
 
 const INVOICE_STATUSES = ["DRAFT", "SENT", "PAID", "OVERDUE", "VOID"];
@@ -20,12 +21,15 @@ const BILL_STATUSES = ["DRAFT", "APPROVED", "PAID", "DISPUTED", "VOID"];
 
 export default function Invoices() {
   return (
-    <Tabs
-      tabs={[
-        { label: "Customer invoices", content: <CustomerInvoices /> },
-        { label: "Supplier bills (AP)", content: <SupplierBills /> },
-      ]}
-    />
+    <div className="space-y-4">
+      <FinanceExceptions />
+      <Tabs
+        tabs={[
+          { label: "Customer invoices", content: <CustomerInvoices /> },
+          { label: "Supplier bills (AP)", content: <SupplierBills /> },
+        ]}
+      />
+    </div>
   );
 }
 
