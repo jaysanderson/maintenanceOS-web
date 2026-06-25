@@ -473,3 +473,21 @@ export interface FinanceExceptionsResponse {
 }
 export const aiFinanceExceptions = () =>
   api.post<FinanceExceptionsResponse>("/ai/finance-exceptions", {});
+
+// UC1A — recurring-fault / callback root-cause for a work order's site
+export interface FaultRootCauseResponse {
+  site: { id: string; name: string; account: string };
+  windowDays: number;
+  signals: {
+    totalJobs: number;
+    recurring: { label: string; count: number; jobs: string[] }[];
+    callbacks: { earlier: string; later: string; daysApart: number; about: string }[];
+    overruns: { workOrder: string; estimatedHours: number; actualHours: number }[];
+    topParts: { item: string; qty: number }[];
+  };
+  narrative: string;
+  citations: string[];
+  proposedActions: { type: "raise-followup"; title: string; jobType: string; accountId: string; siteId: string }[];
+}
+export const aiFaultRootCause = (workOrderId: string) =>
+  api.post<FaultRootCauseResponse>("/ai/fault-root-cause", { workOrderId });
