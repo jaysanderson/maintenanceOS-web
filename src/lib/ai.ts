@@ -177,8 +177,17 @@ export async function aiExtractDocumentStream(file: File, h: ExtractDocHandlers)
 }
 
 // ── Ops Assistant (streamed via the Retrieval Agent + live ERP MCP) ──────
+export type OpsStepKind = "plan" | "tool" | "think" | "write";
+export interface OpsStreamStep {
+  message: string;
+  kind: OpsStepKind;
+  /** The MCP tool name, when this step is a live ERP query. */
+  tool?: string;
+}
 export interface OpsStreamHandlers {
-  onProgress: (message: string) => void;
+  onProgress: (step: OpsStreamStep) => void;
+  /** Optional token-by-token answer streaming (typewriter finish). */
+  onAnswerChunk?: (text: string) => void;
   onAnswer: (text: string, lowConfidence: boolean) => void;
   onError: (message: string) => void;
 }
@@ -230,13 +239,14 @@ export async function aiOpsAssistantStream(
       if (!dataLine) continue;
       const t = dataLine.replace(/^data:\s*/, "").trim();
       if (!t.startsWith("{")) continue;
-      let d: { type?: string; message?: string; text?: string; lowConfidence?: boolean };
+      let d: { type?: string; message?: string; text?: string; lowConfidence?: boolean; kind?: OpsStepKind; tool?: string };
       try {
         d = JSON.parse(t);
       } catch {
         continue;
       }
-      if (d.type === "progress" && d.message) h.onProgress(d.message);
+      if (d.type === "progress" && d.message) h.onProgress({ message: d.message, kind: d.kind ?? "think", tool: d.tool });
+      else if (d.type === "answer-chunk" && d.text) h.onAnswerChunk?.(d.text);
       else if (d.type === "answer") h.onAnswer(d.text ?? "", !!d.lowConfidence);
       else if (d.type === "error" && d.message) h.onError(d.message);
     }
