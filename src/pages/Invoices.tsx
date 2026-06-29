@@ -14,6 +14,7 @@ import {
 } from "../components/ui";
 import { Markdown } from "../components/Markdown";
 import { FinanceExceptions } from "../components/FinanceExceptions";
+import { AiInfo } from "../components/AiInfo";
 import { aiDunningDraft, aiExtractDocumentStream } from "../lib/ai";
 
 const INVOICE_STATUSES = ["DRAFT", "SENT", "PAID", "OVERDUE", "VOID"];
@@ -472,6 +473,7 @@ function SupplierBills() {
           >
             {importing ? "Importing…" : "✶ Import bill from document"}
           </Button>
+          <AiInfo id="extract-document" />
           <Button
             onClick={() => {
               resetForm();
