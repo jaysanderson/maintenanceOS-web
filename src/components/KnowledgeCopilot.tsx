@@ -1,3 +1,4 @@
+import { AiInfo } from "./AiInfo";
 import { useState, FormEvent } from "react";
 import { Card, Button, inputCls } from "./ui";
 import { Markdown } from "./Markdown";
@@ -64,6 +65,7 @@ export function KnowledgeCopilot({
         <div className="flex items-center gap-2">
           <SparkIcon />
           <h3 className="font-semibold">{title}</h3>
+          <AiInfo id="knowledge-copilot" />
           <span className="rounded-full bg-brand-50 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-brand-600">
             Agentic RAG
           </span>

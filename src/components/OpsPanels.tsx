@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { Card, Button } from "./ui";
+import { AiInfo } from "./AiInfo";
 import { Markdown } from "./Markdown";
 import { ApiError } from "../lib/api";
 import {
@@ -31,12 +32,13 @@ function useRun<T>(fn: () => Promise<T>) {
   return { loading, data, error, run };
 }
 
-function Header({ title, data, loading, onRun, label }: { title: string; data: unknown; loading: boolean; onRun: () => void; label: string }) {
+function Header({ title, data, loading, onRun, label, infoId }: { title: string; data: unknown; loading: boolean; onRun: () => void; label: string; infoId?: string }) {
   return (
     <div className="flex items-center justify-between gap-3">
       <div className="flex items-center gap-2">
         <h3 className="font-semibold">{title}</h3>
         <span className="rounded-full bg-brand-50 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-brand-600">Agentic RAG</span>
+        {infoId && <AiInfo id={infoId} />}
       </div>
       <Button variant={data ? "secondary" : "primary"} onClick={onRun} disabled={loading}>
         {loading ? "Working…" : data ? "Refresh" : label}
@@ -50,7 +52,7 @@ export function RiskWatchlist() {
   const { loading, data, error, run } = useRun<RiskWatchlistResponse>(aiRiskWatchlist);
   return (
     <Card className="space-y-3 p-5">
-      <Header title="Risk watchlist" data={data} loading={loading} onRun={run} label="Build watchlist" />
+      <Header title="Risk watchlist" infoId="risk-watchlist" data={data} loading={loading} onRun={run} label="Build watchlist" />
       {error && <div className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{error}</div>}
       {!data && !loading && !error && (
         <p className="text-sm text-slate-500">Rank accounts by a composite risk score across SLA-risk jobs, overdue $ and open jobs — the students-on-a-caseload pattern, for accounts.</p>
@@ -85,7 +87,7 @@ export function CostExceptions() {
   const sev: Record<string, string> = { unresolved: "bg-red-100 text-red-700", partial: "bg-amber-100 text-amber-700" };
   return (
     <Card className="space-y-3 p-5">
-      <Header title="Cost-variance exceptions" data={data} loading={loading} onRun={run} label="Scan jobs" />
+      <Header title="Cost-variance exceptions" infoId="cost-exceptions" data={data} loading={loading} onRun={run} label="Scan jobs" />
       {error && <div className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{error}</div>}
       {!data && !loading && !error && (
         <p className="text-sm text-slate-500">Pre-label completed-job cost variances Unresolved / Partial so you review exceptions instead of investigating every job.</p>
@@ -116,7 +118,7 @@ export function ComplianceReadiness() {
   const { loading, data, error, run } = useRun<ComplianceReadinessResponse>(aiComplianceReadiness);
   return (
     <Card className="space-y-3 p-5">
-      <Header title="Compliance readiness" data={data} loading={loading} onRun={run} label="Assess" />
+      <Header title="Compliance readiness" infoId="compliance-readiness" data={data} loading={loading} onRun={run} label="Assess" />
       {error && <div className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{error}</div>}
       {!data && !loading && !error && (
         <p className="text-sm text-slate-500">Compare the written finance policy against the live configuration and records, and flag policy-vs-practice gaps.</p>

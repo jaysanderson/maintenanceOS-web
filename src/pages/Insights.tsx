@@ -2,6 +2,7 @@ import { useState, FormEvent } from "react";
 import { Card, Button, Badge, inputCls } from "../components/ui";
 import { AiAssist, AiText, primaryText } from "../components/AiAssist";
 import { RiskWatchlist, CostExceptions, ComplianceReadiness } from "../components/OpsPanels";
+import { AiInfo } from "../components/AiInfo";
 import { Markdown } from "../components/Markdown";
 import { ApiError } from "../lib/api";
 import {
@@ -44,6 +45,7 @@ export default function Insights() {
       <div className="grid gap-4 lg:grid-cols-2">
         <AiAssist
           title="Executive summary"
+          infoId="exec-summary"
           description="Board-ready monthly operations summary from live KPIs."
           label="Write summary"
           run={aiExecSummary}
@@ -52,6 +54,7 @@ export default function Insights() {
 
         <AiAssist
           title="SLA early-warning"
+          infoId="sla-early-warning"
           description="Jobs approaching an SLA breach + the recommended action."
           label="Check SLA risk"
           run={aiSlaEarlyWarning}
@@ -67,6 +70,7 @@ export default function Insights() {
 
         <AiAssist
           title="Margin insight"
+          infoId="margin-insight"
           description="Where margin is leaking, by job type."
           label="Analyse margin"
           run={aiMarginInsight}
@@ -86,6 +90,7 @@ export default function Insights() {
 
         <AiAssist
           title="Lost-quote analysis"
+          infoId="lost-quotes"
           description="Why we're losing quotes — patterns in rejected/expired work."
           label="Analyse losses"
           run={aiLostQuotes}
@@ -99,6 +104,7 @@ export default function Insights() {
 
         <AiAssist
           title="Demand-aware reorder"
+          infoId="demand-reorder"
           description="What to reorder, weighted by upcoming scheduled work."
           label="Suggest reorders"
           run={aiDemandReorder}
@@ -114,6 +120,7 @@ export default function Insights() {
 
         <AiAssist
           title="Skill-coverage gaps"
+          infoId="skill-gap"
           description="Skills required by open jobs with too few active holders."
           label="Check coverage"
           run={aiSkillGap}
@@ -135,6 +142,7 @@ export default function Insights() {
 
         <AiAssist
           title="Fleet compliance"
+          infoId="fleet-compliance"
           description="Vehicles with service or registration due soon."
           label="Check fleet"
           run={aiFleetCompliance}
@@ -148,6 +156,7 @@ export default function Insights() {
 
         <AiAssist
           title="Recurring-run preview"
+          infoId="recurring-preview"
           description="What the next recurring run would create, with batching tips."
           label="Preview run"
           run={aiRecurringPreview}
@@ -188,7 +197,10 @@ function TriageCard() {
   const t = res?.triage;
   return (
     <Card className="space-y-3 p-4">
-      <h3 className="text-sm font-semibold">Smart job intake</h3>
+      <div className="flex items-center gap-2">
+        <h3 className="text-sm font-semibold">Smart job intake</h3>
+        <AiInfo id="triage" />
+      </div>
       <p className="text-xs text-slate-500">
         Paste a customer request — ARAG classifies job type, priority, skills and a suggested SLA.
       </p>
@@ -241,7 +253,10 @@ function AuditCard() {
   }
   return (
     <Card className="space-y-3 p-4">
-      <h3 className="text-sm font-semibold">Audit assistant</h3>
+      <div className="flex items-center gap-2">
+        <h3 className="text-sm font-semibold">Audit assistant</h3>
+        <AiInfo id="audit-assistant" />
+      </div>
       <p className="text-xs text-slate-500">
         Ask a natural-language question about the audit log (e.g. “who changed settings recently?”).
       </p>

@@ -1,3 +1,4 @@
+import { AiInfo } from "../components/AiInfo";
 import { useState, useRef, useEffect, FormEvent } from "react";
 import { Card, Button, inputCls } from "../components/ui";
 import { Markdown } from "../components/Markdown";
@@ -93,6 +94,7 @@ export default function OpsAssistant() {
           <span className="rounded-full bg-brand-50 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-brand-600">
             Retrieval Agent · live MCP
           </span>
+          <AiInfo id="ops-assistant" />
         </div>
 
         <form onSubmit={onSubmit} className="flex gap-2">

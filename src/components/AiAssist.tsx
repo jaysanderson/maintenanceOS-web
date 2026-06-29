@@ -2,6 +2,7 @@ import { ReactNode, useState } from "react";
 import { Card, Button } from "./ui";
 import { Markdown } from "./Markdown";
 import { ApiError } from "../lib/api";
+import { AiInfo } from "./AiInfo";
 
 /** Standard amber/slate box for a generated narrative or draft. */
 export function AiText({ text, low }: { text: string; low?: boolean }) {
@@ -33,6 +34,7 @@ export function AiAssist<T>({
   run,
   render,
   autoRunKey,
+  infoId,
 }: {
   title: string;
   description?: string;
@@ -42,6 +44,8 @@ export function AiAssist<T>({
   render: (data: T) => ReactNode;
   /** Change this value to reset the card (e.g. when the parent id changes). */
   autoRunKey?: string;
+  /** AI-feature id for the "what is this?" info popup (lib/aiFeatureInfo.ts). */
+  infoId?: string;
 }) {
   const [loading, setLoading] = useState(false);
   const [data, setData] = useState<T | null>(null);
@@ -81,6 +85,7 @@ export function AiAssist<T>({
           <span className="rounded-full bg-brand-50 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-brand-600">
             {badge}
           </span>
+          {infoId && <AiInfo id={infoId} />}
         </div>
         <Button variant="secondary" onClick={go} disabled={loading}>
           {loading ? "Thinking…" : label}

@@ -1,3 +1,4 @@
+import { AiInfo } from "../components/AiInfo";
 import { useState, FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import { Card, Button, inputCls } from "../components/ui";
@@ -109,7 +110,10 @@ export default function Playbooks() {
   return (
     <div className="mx-auto max-w-3xl space-y-4">
       <div>
-        <h1 className="text-xl font-semibold">Job Playbooks</h1>
+        <div className="flex items-center gap-2">
+          <h1 className="text-xl font-semibold">Job Playbooks</h1>
+          <AiInfo id="playbook" />
+        </div>
         <p className="mt-1 text-sm text-slate-500">
           Generate a standard, reusable playbook for any job — required
           skills, materials, time, steps and safety controls — grounded in

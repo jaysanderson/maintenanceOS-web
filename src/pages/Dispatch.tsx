@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { useList, useApiMutation } from "../lib/hooks";
 import { api, dateTime } from "../lib/api";
@@ -6,6 +6,7 @@ import { WorkOrder, Employee } from "../lib/types";
 import { PageState, Card, Badge, Button, inputCls } from "../components/ui";
 import { DispatchActions } from "../components/DispatchActions";
 import { AiText } from "../components/AiAssist";
+import { AiInfo } from "../components/AiInfo";
 import { aiDayPlan, DayPlanResponse } from "../lib/ai";
 
 const ACTIVE = ["SCHEDULED", "DISPATCHED", "IN_PROGRESS", "WAITING_ON_PARTS"];
@@ -37,7 +38,7 @@ export default function Dispatch() {
     <PageState loading={orders.isLoading} error={orders.error}>
       <div className="space-y-6">
         <DispatchActions />
-        <DayPlanCard techs={techs} />
+        <DayPlanCard techs={techs} workOrders={all} />
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
           <Card>
             <Header title="Unassigned Work Orders" count={unassigned.length} tone="warn" />
@@ -160,26 +161,58 @@ function Empty({ children }: { children: React.ReactNode }) {
   return <div className="p-6 text-sm text-slate-500">{children}</div>;
 }
 
-function DayPlanCard({ techs }: { techs: Employee[] }) {
+function DayPlanCard({ techs, workOrders }: { techs: Employee[]; workOrders: WorkOrder[] }) {
   const [empId, setEmpId] = useState("");
   const [date, setDate] = useState("");
   const [loading, setLoading] = useState(false);
   const [plan, setPlan] = useState<DayPlanResponse | null>(null);
-  async function run() {
-    if (!empId) return;
+  const ranRef = useRef(false);
+
+  // Find the busiest technician-day on the board so the card always has a
+  // populated, live example to show — no guessing which tech or date.
+  const techIds = useMemo(() => new Set(techs.map((t) => t.id)), [techs]);
+  const best = useMemo(() => {
+    const counts = new Map<string, { emp: string; date: string; n: number }>();
+    for (const w of workOrders) {
+      if (!w.scheduledStart || !w.assignedEmployeeId || !techIds.has(w.assignedEmployeeId)) continue;
+      const d = new Date(w.scheduledStart).toISOString().slice(0, 10);
+      const key = `${w.assignedEmployeeId}|${d}`;
+      const cur = counts.get(key) ?? { emp: w.assignedEmployeeId, date: d, n: 0 };
+      cur.n++;
+      counts.set(key, cur);
+    }
+    return [...counts.values()].sort((a, b) => b.n - a.n)[0] ?? null;
+  }, [workOrders, techIds]);
+  const bestTech = best ? techs.find((t) => t.id === best.emp) : null;
+
+  async function run(eId = empId, d = date) {
+    if (!eId) return;
     setLoading(true);
     setPlan(null);
     try {
-      setPlan(await aiDayPlan(empId, date || undefined));
+      setPlan(await aiDayPlan(eId, d || undefined));
     } finally {
       setLoading(false);
     }
   }
+
+  // Pre-fill the busiest tech/day and run it once on mount so the demo lands
+  // on a real, non-empty result immediately.
+  useEffect(() => {
+    if (best && !ranRef.current) {
+      ranRef.current = true;
+      setEmpId(best.emp);
+      setDate(best.date);
+      run(best.emp, best.date);
+    }
+  }, [best]);
+
   return (
     <Card className="space-y-3 p-4">
       <div className="flex flex-wrap items-center gap-2">
         <h3 className="text-sm font-semibold">Technician day-plan</h3>
         <span className="rounded-full bg-brand-50 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-brand-600">ARAG</span>
+        <AiInfo id="day-plan" />
         <div className="ml-auto flex items-center gap-2">
           <select className={`${inputCls} max-w-[180px]`} value={empId} onChange={(e) => setEmpId(e.target.value)}>
             <option value="">Select technician…</option>
@@ -188,11 +221,17 @@ function DayPlanCard({ techs }: { techs: Employee[] }) {
             ))}
           </select>
           <input type="date" className={`${inputCls} max-w-[160px]`} value={date} onChange={(e) => setDate(e.target.value)} />
-          <Button variant="secondary" disabled={!empId || loading} onClick={run}>
+          <Button variant="secondary" disabled={!empId || loading} onClick={() => run()}>
             {loading ? "Planning…" : "Plan day"}
           </Button>
         </div>
       </div>
+      {!plan && !loading && bestTech && best && (
+        <p className="text-xs text-slate-500">
+          Pre-filled to <span className="font-medium text-slate-700">{bestTech.firstName} {bestTech.lastName}</span> on{" "}
+          {best.date} — the busiest day on the board ({best.n} job{best.n === 1 ? "" : "s"}). Click <span className="font-medium">Plan day</span>.
+        </p>
+      )}
       {plan && (
         <div className="space-y-2">
           <div className="text-xs text-slate-500">

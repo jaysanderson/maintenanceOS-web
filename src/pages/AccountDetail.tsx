@@ -129,6 +129,7 @@ export default function AccountDetail() {
           <div className="grid gap-3 lg:grid-cols-3">
             <AiAssist
               title="Account health"
+              infoId="account-health"
               description="Churn & payment-risk read from activity, margin and overdue invoices."
               label="Assess"
               autoRunKey={id}
@@ -137,6 +138,7 @@ export default function AccountDetail() {
             />
             <AiAssist
               title="Proactive maintenance"
+              infoId="proactive-maintenance"
               description="Work worth proactively offering this customer now."
               label="Suggest"
               autoRunKey={id}
@@ -145,6 +147,7 @@ export default function AccountDetail() {
             />
             <AiAssist
               title="Recurring plan"
+              infoId="recurring-suggest"
               description="Propose a recurring plan from this account's repeat work."
               label="Propose"
               autoRunKey={id}

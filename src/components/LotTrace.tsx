@@ -1,3 +1,4 @@
+import { AiInfo } from "./AiInfo";
 import { useState, useEffect } from "react";
 import { Card, Button, inputCls } from "./ui";
 import { ApiError } from "../lib/api";
@@ -35,6 +36,7 @@ export function LotTrace() {
     <Card className="space-y-3 p-5">
       <div className="flex items-center gap-2">
         <h3 className="font-semibold">Part / lot trace</h3>
+        <AiInfo id="lot-trace" />
         <span className="rounded-full bg-brand-50 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-brand-600">Recall-ready</span>
       </div>
       <p className="text-sm text-slate-500">Pick a lot to trace it forward (which jobs and customers received it) and backward (where it was received) — the FSMA-style recall trace.</p>

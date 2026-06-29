@@ -1,3 +1,4 @@
+import { AiInfo } from "./AiInfo";
 import { AiAssist, AiText, ConfidenceChip } from "./AiAssist";
 import {
   aiSimilarWorkOrders,
@@ -25,6 +26,7 @@ export function WorkOrderAiPanel({ workOrderId }: { workOrderId: string }) {
       <div className="grid gap-3 xl:grid-cols-2">
         <AiAssist
           title="Duplicate / callback check"
+          infoId="similar-work-orders"
           description="Is this a repeat of another job at the same site, or warranty rework?"
           label="Check"
           autoRunKey={key}
@@ -53,6 +55,7 @@ export function WorkOrderAiPanel({ workOrderId }: { workOrderId: string }) {
 
         <AiAssist
           title="Safety pre-flight"
+          infoId="safety-preflight"
           description="Safety controls for this job + clearance check on the assigned tech."
           label="Run pre-flight"
           autoRunKey={key}
@@ -82,6 +85,7 @@ export function WorkOrderAiPanel({ workOrderId }: { workOrderId: string }) {
 
         <AiAssist
           title="Parts kit"
+          infoId="parts-kit"
           description="What to load, from parts actually used on comparable jobs."
           label="Suggest kit"
           autoRunKey={key}
@@ -105,6 +109,7 @@ export function WorkOrderAiPanel({ workOrderId }: { workOrderId: string }) {
 
         <AiAssist
           title="Site access briefing"
+          infoId="site-access-briefing"
           description="What the tech needs before arriving — contact, access, pets, window."
           label="Brief"
           autoRunKey={key}
@@ -114,6 +119,7 @@ export function WorkOrderAiPanel({ workOrderId }: { workOrderId: string }) {
 
         <AiAssist
           title="Completion note"
+          infoId="completion-note"
           description="Draft the completion note from time entries, parts and status."
           label="Draft note"
           autoRunKey={key}
@@ -123,6 +129,7 @@ export function WorkOrderAiPanel({ workOrderId }: { workOrderId: string }) {
 
         <AiAssist
           title="Job timeline"
+          infoId="work-order-timeline"
           description="Plain-English history of this job for handover or dispute."
           label="Summarise"
           autoRunKey={key}
@@ -132,6 +139,7 @@ export function WorkOrderAiPanel({ workOrderId }: { workOrderId: string }) {
 
         <AiAssist
           title="Time check"
+          infoId="time-anomaly"
           description="Flag if logged hours are unusually high before invoicing."
           label="Check hours"
           autoRunKey={key}
@@ -148,6 +156,7 @@ export function WorkOrderAiPanel({ workOrderId }: { workOrderId: string }) {
 
         <AiAssist
           title="Variation claim"
+          infoId="variation-claim"
           description="Draft a variation note when actuals exceed the quote."
           label="Check variation"
           autoRunKey={key}
@@ -166,6 +175,7 @@ export function WorkOrderAiPanel({ workOrderId }: { workOrderId: string }) {
 
         <AiAssist
           title="Customer update"
+          infoId="customer-status-update"
           description="Draft a friendly status update to send the customer."
           label="Draft update"
           autoRunKey={key}

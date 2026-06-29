@@ -1,3 +1,4 @@
+import { AiInfo } from "./AiInfo";
 import { useState } from "react";
 import { useList } from "../lib/hooks";
 import { Card, Button, inputCls } from "./ui";
@@ -36,6 +37,7 @@ export function AssetServiceCoPilot() {
     <Card className="space-y-3 p-5">
       <div className="flex items-center gap-2">
         <h3 className="font-semibold">Fleet/asset service co-pilot</h3>
+        <AiInfo id="asset-service" />
         <span className="rounded-full bg-brand-50 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-brand-600">Agentic RAG</span>
       </div>
       <p className="text-sm text-slate-500">Pick a vehicle or asset and describe the symptom — likely cause, recommended next step and service status, grounded in the equipment manuals.</p>

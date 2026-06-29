@@ -1,3 +1,4 @@
+import { AiInfo } from "./AiInfo";
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
@@ -69,6 +70,7 @@ export function DispatchActions() {
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <h3 className="font-semibold">AI Next-Best-Actions</h3>
+          <AiInfo id="dispatch-actions" />
           <span className="rounded-full bg-brand-50 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-brand-600">
             Agentic RAG
           </span>

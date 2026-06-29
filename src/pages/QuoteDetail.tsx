@@ -89,6 +89,7 @@ export default function QuoteDetail() {
           <div className="grid gap-3 lg:grid-cols-2">
             <AiAssist
               title="Pricing risk check"
+              infoId="quote-risk"
               description="Compare this quote's margin against comparable jobs."
               label="Check"
               autoRunKey={id}
@@ -104,6 +105,7 @@ export default function QuoteDetail() {
             />
             <AiAssist
               title="Cover note"
+              infoId="quote-comms"
               description="Draft a friendly cover note to send with this quote."
               label="Draft"
               autoRunKey={id}

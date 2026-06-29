@@ -1,3 +1,4 @@
+import { AiInfo } from "./AiInfo";
 import { useState, useRef, useEffect, FormEvent } from "react";
 import { aiAsk, type AiFilter } from "../lib/ai";
 import { ApiError } from "../lib/api";
@@ -70,6 +71,7 @@ export function HelpChatbot() {
             <div className="flex items-center gap-2">
               <SparkIcon />
               <span className="text-sm font-semibold">Help</span>
+              <AiInfo id="help-assistant" />
               <span className="rounded-full bg-brand-50 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-brand-600">
                 User guide
               </span>

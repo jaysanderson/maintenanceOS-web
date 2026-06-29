@@ -1,3 +1,4 @@
+import { AiInfo } from "./AiInfo";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
@@ -69,6 +70,7 @@ export function FaultRootCause({ workOrderId }: { workOrderId: string }) {
       <div className="flex items-center justify-between gap-3">
         <div className="flex items-center gap-2">
           <h3 className="font-semibold">Recurring-fault analysis</h3>
+          <AiInfo id="fault-root-cause" />
           <span className="rounded-full bg-brand-50 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-brand-600">
             Agentic RAG
           </span>
