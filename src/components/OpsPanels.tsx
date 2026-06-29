@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Link } from "react-router-dom";
 import { Card, Button } from "./ui";
 import { AiInfo } from "./AiInfo";
+import { MiniBar } from "./MiniBar";
 import { Markdown } from "./Markdown";
 import { ApiError } from "../lib/api";
 import {
@@ -62,6 +63,15 @@ export function RiskWatchlist() {
           {data.accounts.length === 0 ? (
             <p className="text-sm text-slate-500">No accounts showing elevated risk. 🎉</p>
           ) : (
+            <>
+            <MiniBar
+              data={data.accounts.slice(0, 6).map((a) => ({
+                label: a.account,
+                value: a.score,
+                display: `${a.score}`,
+                color: a.score >= 50 ? "bg-rose-500" : a.score >= 25 ? "bg-amber-500" : "bg-brand-500",
+              }))}
+            />
             <div className="divide-y divide-slate-100">
               {data.accounts.map((a, i) => (
                 <div key={a.accountId} className="flex items-center justify-between gap-3 py-2 text-sm">
@@ -73,6 +83,7 @@ export function RiskWatchlist() {
                 </div>
               ))}
             </div>
+            </>
           )}
           <div className="rounded-lg bg-slate-50 p-3 text-sm"><Markdown text={data.narrative} /></div>
         </div>

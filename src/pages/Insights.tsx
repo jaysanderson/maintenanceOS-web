@@ -3,6 +3,7 @@ import { Card, Button, Badge, inputCls } from "../components/ui";
 import { AiAssist, AiText, primaryText } from "../components/AiAssist";
 import { RiskWatchlist, CostExceptions, ComplianceReadiness } from "../components/OpsPanels";
 import { AiInfo } from "../components/AiInfo";
+import { MiniBar } from "../components/MiniBar";
 import { Markdown } from "../components/Markdown";
 import { ApiError } from "../lib/api";
 import {
@@ -75,14 +76,20 @@ export default function Insights() {
           label="Analyse margin"
           run={aiMarginInsight}
           render={(d) => (
-            <div className="space-y-2">
-              <div className="flex flex-wrap gap-1">
-                {d.byJobType.slice(0, 6).map((j) => (
-                  <span key={j.jobType} className="rounded bg-slate-100 px-2 py-0.5 text-[11px] text-slate-600">
-                    {j.jobType}: {j.avgMarginPercent}%
-                  </span>
-                ))}
-              </div>
+            <div className="space-y-3">
+              <MiniBar
+                data={d.byJobType.slice(0, 6).map((j) => ({
+                  label: j.jobType.replace(/_/g, " "),
+                  value: j.avgMarginPercent,
+                  display: `${j.avgMarginPercent}%`,
+                  color:
+                    j.avgMarginPercent < 20
+                      ? "bg-rose-500"
+                      : j.avgMarginPercent < 30
+                        ? "bg-amber-500"
+                        : "bg-emerald-500",
+                }))}
+              />
               <AiText text={d.narrative} />
             </div>
           )}
